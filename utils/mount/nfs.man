@@ -779,6 +779,23 @@ so if this mount option is not specified, the NFS version 4 client
 uses the TCP protocol.
 Refer to the TRANSPORT METHODS section for more details.
 .TP 1.5i
+.BI minorversion= n
+Specifies the protocol minor version number.
+NFSv4 introduces "minor versioning," where NFS protocol enhancements can
+be introduced without bumping the NFS protocol version number.
+Before kernel 2.6.38, the minor version is always zero, and this
+option is not recognized.
+After this kernel, specifying "minorversion=1" enables a number of
+advanced features, such as NFSv4 sessions.
+.IP
+Recent kernels allow the minor version to be specified using the
+.B vers=
+option.
+For example, specifying
+.B vers=4.1
+is the same as specifying
+.BR vers=4,minorversion=1 .
+.TP 1.5i
 .BI port= n
 The numeric value of the server's NFS service port.
 If the server's NFS service is not available on the specified port,
