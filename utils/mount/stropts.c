@@ -862,6 +862,9 @@ check_result:
 	case EINVAL:
 		/* A less clear indication that our client
 		 * does not support NFSv4 minor version. */
+	case EACCES:
+		/* An unclear indication that the server
+		 * may not support NFSv4 minor version. */
 		if (mi->version.v_mode != V_SPECIFIC) {
 			if (mi->version.minor > 0) {
 				mi->version.minor--;
