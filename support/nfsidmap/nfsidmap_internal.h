@@ -70,3 +70,10 @@ extern nfs4_idmap_log_function_t idmap_log_func;
 /* Level zero always prints, others print depending on verbosity level */
 #define IDMAP_LOG(LVL, MSG) \
 	do { if (LVL <= idmap_verbosity) (*idmap_log_func)MSG; } while (0)
+
+#ifdef __GNUC__
+#define UNUSED(foo) UNUSED_ ## foo __attribute__((__unused__))
+#else
+#define UNUSED(foo) UNUSED_ ## foo
+#endif
+

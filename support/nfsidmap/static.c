@@ -92,7 +92,8 @@ static __inline__ u_int8_t gid_hash (gid_t gid)
 LIST_HEAD (uid_mappings, uid_mapping) uid_mappings[256];
 LIST_HEAD (gid_mappings, gid_mapping) gid_mappings[256];
 
-static struct passwd *static_getpwnam(const char *name, const char *domain,
+static struct passwd *static_getpwnam(const char *name,
+				      const char *UNUSED(domain),
 				      int *err_p)
 {
 	struct passwd *pw;
@@ -142,8 +143,9 @@ err:
 	return NULL;
 }
 
-static struct group *static_getgrnam(const char *name, const char *domain,
-				      int *err_p)
+static struct group *static_getgrnam(const char *name,
+				     const char *UNUSED(domain),
+				     int *err_p)
 {
 	struct group *gr;
 	struct grbuf *buf;
@@ -194,7 +196,7 @@ err:
 
 static int static_gss_princ_to_ids(char *secname, char *princ,
 				   uid_t *uid, uid_t *gid,
-				   extra_mapping_params **ex)
+				   extra_mapping_params **UNUSED(ex))
 {
 	struct passwd *pw;
 	int err;
@@ -216,7 +218,7 @@ static int static_gss_princ_to_ids(char *secname, char *princ,
 
 static int static_gss_princ_to_grouplist(char *secname, char *princ,
 					 gid_t *groups, int *ngroups,
-					 extra_mapping_params **ex)
+					 extra_mapping_params **UNUSED(ex))
 {
 	struct passwd *pw;
 	int err;
@@ -266,7 +268,7 @@ static int static_name_to_gid(char *name, gid_t *gid)
 	return -err;
 }
 
-static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
+static int static_uid_to_name(uid_t uid, char *UNUSED(domain), char *name, size_t UNUSED(len))
 {
 	struct uid_mapping * um;
 
@@ -281,7 +283,7 @@ static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 	return -ENOENT;
 }
 
-static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
+static int static_gid_to_name(gid_t gid, char *UNUSED(domain), char *name, size_t UNUSED(len))
 {
 	struct gid_mapping * gm;
 
@@ -301,7 +303,7 @@ static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
  * uid_to_name functions will be fast enough.
  */
 
-static int static_init() {	
+static int static_init(void) {	
 	int err;
 	struct conf_list * princ_list = NULL;
 	struct conf_list_node * cln, *next;
@@ -404,7 +406,7 @@ struct trans_func static_trans = {
 	.gss_princ_to_grouplist	= static_gss_princ_to_grouplist,
 };
 
-struct trans_func *libnfsidmap_plugin_init()
+struct trans_func *libnfsidmap_plugin_init(void)
 {
 	return (&static_trans);
 }

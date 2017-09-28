@@ -379,7 +379,7 @@ out:
 
 static int nss_gss_princ_to_ids(char *secname, char *princ,
 				uid_t *uid, uid_t *gid,
-				extra_mapping_params **ex)
+				extra_mapping_params **UNUSED(ex))
 {
 	struct passwd *pw;
 	int err = 0;
@@ -429,7 +429,7 @@ out:
 
 int nss_gss_princ_to_grouplist(char *secname, char *princ,
 			       gid_t *groups, int *ngroups,
-			       extra_mapping_params **ex)
+			       extra_mapping_params **UNUSED(ex))
 {
 	struct passwd *pw;
 	int ret = -EINVAL;
@@ -462,7 +462,7 @@ struct trans_func nss_trans = {
 	.gss_princ_to_grouplist = nss_gss_princ_to_grouplist,
 };
 
-struct trans_func *libnfsidmap_plugin_init()
+struct trans_func *libnfsidmap_plugin_init(void)
 {
 	return (&nss_trans);
 }

@@ -103,7 +103,7 @@ nfs4_idmap_log_function_t idmap_log_func = default_logger;
 
 static char * toupper_str(char *s)
 {
-	int i;
+	size_t i;
 	for (i=0; i < strlen(s); i++)
 		s[i] = toupper(s[i]);
 	return s;
@@ -128,7 +128,8 @@ static int id_as_chars(char *name, uid_t *id)
 static int dns_txt_query(char *domain, char **nfs4domain)
 {
 	char *txtname = NFS4DNSTXTREC;
-	char *msg, *answ, *eom, *mptr; 
+	unsigned char *msg, *eom, *mptr;
+	char *answ;
 	int len, status = -1;
 	HEADER *hdr;
 	
@@ -323,7 +324,8 @@ out:
 		unload_plugins(plgns);
 	return ret;
 }
-void nfs4_cleanup_name_mapping()
+
+void nfs4_cleanup_name_mapping(void)
 {
 	if (nfs4_plugins)
 		unload_plugins(nfs4_plugins);
@@ -534,7 +536,7 @@ struct conf_list *get_local_realms(void)
 }
 
 int
-nfs4_get_default_domain(char *server, char *domain, size_t len)
+nfs4_get_default_domain(char *UNUSED(server), char *domain, size_t len)
 {
 	char *d = get_default_domain();
 

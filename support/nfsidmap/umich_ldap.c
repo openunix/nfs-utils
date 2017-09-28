@@ -970,7 +970,8 @@ out:
  */
 static int
 umichldap_gss_princ_to_ids(char *secname, char *principal,
-			   uid_t *uid, gid_t *gid, extra_mapping_params **ex)
+			   uid_t *uid, gid_t *gid,
+			   extra_mapping_params **UNUSED(ex))
 {
 	uid_t rtnd_uid = -1;
 	gid_t rtnd_gid = -1;
@@ -1012,20 +1013,20 @@ umichldap_name_to_gid(char *name, gid_t *gid)
 }
 
 static int
-umichldap_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
+umichldap_uid_to_name(uid_t uid, char *UNUSED(domain), char *name, size_t len)
 {
 	return umich_id_to_name(uid, IDTYPE_USER, &name, len, &ldap_info);
 }
 
 static int
-umichldap_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
+umichldap_gid_to_name(gid_t gid, char *UNUSED(domain), char *name, size_t len)
 {
 	return umich_id_to_name(gid, IDTYPE_GROUP, &name, len, &ldap_info);
 }
 
 static int
 umichldap_gss_princ_to_grouplist(char *secname, char *principal,
-		gid_t *groups, int *ngroups, extra_mapping_params **ex)
+		gid_t *groups, int *ngroups, extra_mapping_params **UNUSED(ex))
 {
 	int err = -EINVAL;
 
@@ -1296,7 +1297,7 @@ struct trans_func umichldap_trans = {
 	.gss_princ_to_grouplist = umichldap_gss_princ_to_grouplist,
 };
 
-struct trans_func *libnfsidmap_plugin_init()
+struct trans_func *libnfsidmap_plugin_init(void)
 {
 	return (&umichldap_trans);
 }
