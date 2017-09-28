@@ -636,28 +636,9 @@ conf_match_num(const char *section, const char *tag, int x)
 char *
 conf_get_str(const char *section, const char *tag)
 {
-	struct conf_binding *cb;
-retry:
-	cb = LIST_FIRST (&conf_bindings[conf_hash (section)]);
-	for (; cb; cb = LIST_NEXT (cb, link)) {
-		if (strcasecmp (section, cb->section) == 0
-		    && strcasecmp (tag, cb->tag) == 0) {
-			if (cb->value[0] == '$') {
-				/* expand $name from [environment] section,
-				 * or from environment
-				 */
-				char *env = getenv(cb->value+1);
-				if (env && *env)
-					return env;
-				section = "environment";
-				tag = cb->value + 1;
-				goto retry;
-			}
-			return cb->value;
-		}
-	}
-	return 0;
+	return conf_get_section(section, NULL, tag);
 }
+
 /*
  * Find a section that may or may not have an argument
  */
@@ -665,7 +646,7 @@ char *
 conf_get_section(const char *section, const char *arg, const char *tag)
 {
 	struct conf_binding *cb;
-
+retry:
 	cb = LIST_FIRST (&conf_bindings[conf_hash (section)]);
 	for (; cb; cb = LIST_NEXT (cb, link)) {
 		if (strcasecmp(section, cb->section) != 0)
@@ -674,6 +655,17 @@ conf_get_section(const char *section, const char *arg, const char *tag)
 			continue;
 		if (strcasecmp(tag, cb->tag) != 0)
 			continue;
+		if (cb->value[0] == '$') {
+			/* expand $name from [environment] section,
+			 * or from environment
+			 */
+			char *env = getenv(cb->value+1);
+			if (env && *env)
+				return env;
+			section = "environment";
+			tag = cb->value + 1;
+			goto retry;
+		}
 		return cb->value;
 	}
 	return 0;
