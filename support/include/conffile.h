@@ -49,21 +49,21 @@ struct conf_list {
 };
 
 extern int      conf_begin(void);
-extern int      conf_decode_base64(uint8_t *, uint32_t *, unsigned char *);
+extern int      conf_decode_base64(uint8_t *, uint32_t *, const unsigned char *);
 extern int      conf_end(int, int);
 extern void     conf_free_list(struct conf_list *);
-extern struct sockaddr *conf_get_address(char *, char *);
-extern struct conf_list *conf_get_list(char *, char *);
-extern struct conf_list *conf_get_tag_list(char *, char *);
-extern int      conf_get_num(char *, char *, int);
-extern _Bool    conf_get_bool(char *, char *, _Bool);
-extern char    *conf_get_str(char *, char *);
-extern char    *conf_get_section(char *, char *, char *);
+extern struct sockaddr *conf_get_address(const char *, const char *);
+extern struct conf_list *conf_get_list(const char *, const char *);
+extern struct conf_list *conf_get_tag_list(const char *, const char *);
+extern int      conf_get_num(const char *, const char *, int);
+extern _Bool    conf_get_bool(const char *, const char *, _Bool);
+extern char    *conf_get_str(const char *, const char *);
+extern char    *conf_get_section(const char *, const char *, const char *);
 extern void     conf_init(const char *);
 extern void     conf_cleanup(void);
-extern int      conf_match_num(char *, char *, int);
-extern int      conf_remove(int, char *, char *);
-extern int      conf_remove_section(int, char *);
+extern int      conf_match_num(const char *, const char *, int);
+extern int      conf_remove(int, const char *, const char *);
+extern int      conf_remove_section(int, const char *);
 extern void     conf_report(void);
 
 /*
