@@ -639,6 +639,18 @@ conf_get_str(const char *section, const char *tag)
 	return conf_get_section(section, NULL, tag);
 }
 
+/* Return the string value denoted by TAG in section SECTION,
+ * unless it is not set, in which case return def
+ */
+char *
+conf_get_str_with_def(const char *section, const char *tag, char *def)
+{
+	char * result = conf_get_section(section, NULL, tag);
+	if (!result) 
+		return def;
+	return result;
+}
+
 /*
  * Find a section that may or may not have an argument
  */

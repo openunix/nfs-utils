@@ -58,6 +58,7 @@ extern struct conf_list *conf_get_tag_list(const char *, const char *);
 extern int      conf_get_num(const char *, const char *, int);
 extern _Bool    conf_get_bool(const char *, const char *, _Bool);
 extern char    *conf_get_str(const char *, const char *);
+extern char    *conf_get_str_with_def(const char *, const char *, char *);
 extern char    *conf_get_section(const char *, const char *, const char *);
 extern void     conf_init(const char *);
 extern void     conf_cleanup(void);
