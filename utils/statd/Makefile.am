@@ -13,11 +13,11 @@ sm_notify_SOURCES = sm-notify.c
 
 BUILT_SOURCES = $(GENFILES)
 statd_LDADD = ../../support/nsm/libnsm.a \
-	      ../../support/nfs/libnfs.a \
+	      ../../support/nfs/libnfs.la \
 	      ../../support/misc/libmisc.a \
 	      $(LIBWRAP) $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
 sm_notify_LDADD = ../../support/nsm/libnsm.a \
-		  ../../support/nfs/libnfs.a \
+		  ../../support/nfs/libnfs.la \
 	          ../../support/misc/libmisc.a \
 		  $(LIBNSL) $(LIBCAP) $(LIBTIRPC)
 

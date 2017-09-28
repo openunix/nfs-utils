@@ -44,7 +44,7 @@ gssd_SOURCES = \
 	write_bytes.h
 
 gssd_LDADD = \
-	../../support/nfs/libnfs.a \
+	../../support/nfs/libnfs.la \
 	$(LIBEVENT) \
 	$(RPCSECGSS_LIBS) \
 	$(KRBLIBS) \
@@ -74,7 +74,7 @@ svcgssd_SOURCES = \
 	svcgssd.h
 
 svcgssd_LDADD = \
-	../../support/nfs/libnfs.a \
+	../../support/nfs/libnfs.la \
 	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
 	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
 

@@ -25,7 +25,7 @@ else
 EXTRA_DIST += nfsmount.conf.man
 endif
 
-mount_nfs_LDADD = ../../support/nfs/libnfs.a \
+mount_nfs_LDADD = ../../support/nfs/libnfs.la \
 		  ../../support/export/libexport.a \
 		  $(LIBTIRPC)
 

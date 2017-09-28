@@ -33,6 +33,8 @@ support/include/config.h
 support/include/stamp-h1
 # file generated during compilation
 *.o
+*.lo
+*.la
 .libs
 lib*.a
 test-driver

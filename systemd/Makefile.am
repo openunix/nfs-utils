@@ -53,10 +53,10 @@ nfs_server_generator_SOURCES = $(COMMON_SRCS) nfs-server-generator.c
 rpc_pipefs_generator_SOURCES = $(COMMON_SRCS) rpc-pipefs-generator.c
 
 nfs_server_generator_LDADD = ../support/export/libexport.a \
-			     ../support/nfs/libnfs.a \
+			     ../support/nfs/libnfs.la \
 			     ../support/misc/libmisc.a
 
-rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.a
+rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.la
 
 if INSTALL_SYSTEMD
 genexec_PROGRAMS = nfs-server-generator rpc-pipefs-generator

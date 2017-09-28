@@ -33,6 +33,8 @@
 
 #undef	VERBOSE_PRINTF
 
+#pragma GCC visibility push(hidden)
+
 static int  log_stderr = 1;
 static int  log_syslog = 1;
 static int  logging = 0;		/* enable/disable DEBUG logs	*/
