@@ -112,7 +112,7 @@ static int
 nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
 {
 	int fd, on = 1, fac = L_ERROR;
-	int sockfd = -1, rc = 0;
+	int sockfd = -1, rc = 0, bounded = 0;
 	struct addrinfo *addrhead = NULL, *addr;
 	char *proto, *family;
 
@@ -233,6 +233,8 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
 			rc = errno;
 			goto error;
 		}
+		bounded++;
+
 		close(fd);
 		close(sockfd);
 		sockfd = fd = -1;
@@ -245,7 +247,7 @@ error:
 		close(sockfd);
 	if (addrhead)
 		freeaddrinfo(addrhead);
-	return rc;
+	return (bounded ? 0 : rc);
 }
 
 int
