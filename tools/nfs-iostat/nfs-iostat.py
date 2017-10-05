@@ -429,6 +429,8 @@ def parse_stats_file(filename):
         words = line.split()
         if len(words) == 0:
             continue
+	if line.startswith("no device mounted") :
+            continue
         if words[0] == 'device':
             key = words[4]
             new = [ line.strip() ]
