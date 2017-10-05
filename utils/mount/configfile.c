@@ -66,6 +66,7 @@ struct mnt_alias {
 	{"background", "bg", MNT_NOARG},
 	{"foreground", "fg", MNT_NOARG},
 	{"sloppy", "sloppy", MNT_NOARG},
+	{"nfsvers", "vers", MNT_UNSET},
 };
 int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
 
@@ -292,20 +293,21 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
 
 	list = conf_get_tag_list(section, arg);
 	TAILQ_FOREACH(node, &list->fields, link) {
+		/* check first if this is an alias for another option */
+		field = mountopts_alias(node->field, &argtype);
 		/*
 		 * Do not overwrite options if already exists 
 		 */
-		snprintf(buf, BUFSIZ, "%s=", node->field);
+		snprintf(buf, BUFSIZ, "%s=", field);
 		if (opts && strcasestr(opts, buf) != NULL)
 			continue;
 
-		if (lookup_entry(node->field) != NULL)
+		if (lookup_entry(field) != NULL)
 			continue;
 		buf[0] = '\0';
 		value = conf_get_section(section, arg, node->field);
 		if (value == NULL)
 			continue;
-		field = mountopts_alias(node->field, &argtype);
 		if (strcasecmp(value, "false") == 0) {
 			if (argtype != MNT_NOARG)
 				snprintf(buf, BUFSIZ, "no%s", field);
