@@ -589,7 +589,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			usage(progname);
-			return 0;
+			return 1;
 		}
 	}
 
