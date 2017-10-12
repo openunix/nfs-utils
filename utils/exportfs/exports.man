@@ -410,7 +410,7 @@ of the filesystem must be handled elsewhere.)
 
 .TP
 .IR pnfs
-This option allows enables the use of pNFS extension if protocol level
+This option enables the use of the pNFS extension if the protocol level
 is NFSv4.1 or higher, and the filesystem supports pNFS exports.  With
 pNFS clients can bypass the server and perform I/O directly to storage
 devices. The default can be explicitly requested with the
