@@ -14,3 +14,4 @@ ConditionPathExists=/etc/krb5.keytab
 [Service]
 Type=oneshot
 ExecStart=/sbin/modprobe -q auth_rpcgss
+RemainAfterExit=yes

@@ -13,3 +13,4 @@ PartOf=nfs-utils.service
 [Service]
 Type=forking
 ExecStart=-/usr/sbin/sm-notify
+RemainAfterExit=yes
