@@ -28,6 +28,9 @@
 #include <netdb.h>
 #include <errno.h>
 #include <grp.h>
+#include <netinet/in.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
 
 #include "conffile.h"
 #include "sockaddr.h"
@@ -90,6 +93,7 @@ smn_lookup(const char *name)
 	};
 	int error;
 
+	res_init();
 	error = getaddrinfo(name, NULL, &hint, &ai);
 	if (error != 0) {
 		xlog(D_GENERAL, "getaddrinfo(3): %s", gai_strerror(error));
