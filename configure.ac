@@ -304,9 +304,6 @@ if test "$enable_nfsv4" = yes; then
   dnl check for libevent libraries and headers
   AC_LIBEVENT
 
-  dnl check for nfsidmap libraries and headers
-  AC_LIBNFSIDMAP
-
   dnl check for the keyutils libraries and headers
   AC_KEYUTILS
 
@@ -339,7 +336,6 @@ fi
 
 dnl enable nfsidmap when its support by libnfsidmap
 AM_CONDITIONAL(CONFIG_NFSDCLTRACK, [test "$enable_nfsdcltrack" = "yes" ])
-AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
 
 
 if test "$knfsd_cv_glibc2" = no; then
@@ -382,9 +378,6 @@ if test "$enable_gss" = yes; then
   dnl check for libevent libraries and headers
   AC_LIBEVENT
 
-  dnl 'gss' also depends on nfsidmap.h - at least for svcgssd_proc.c
-  AC_LIBNFSIDMAP
-
   dnl Check for Kerberos V5
   AC_KERBEROS_V5
 
@@ -406,6 +399,47 @@ if test "$enable_gss" = yes; then
     AC_SUBST([GSSAPI_LIBS])
   fi
 fi
+
+dnl libdnsidmap specific checks
+AC_CHECK_LIB([resolv], [__res_querydomain], , AC_MSG_ERROR(res_querydomain needed))
+
+AC_ARG_ENABLE([ldap],
+	[AS_HELP_STRING([--disable-ldap],[Disable support for LDAP @<:default=detect@:>@])])
+
+dnl will libdnsidmap support LDAP ?
+if test "x$enable_ldap" != "xno" ; then
+        AC_CHECK_HEADER([ldap.h],
+                [AC_CHECK_LIB([ldap], [ldap_initialize],
+                              [have_ldap="yes"],[have_ldap="no"])],
+                [have_ldap="no"])
+        if test "x$have_ldap" = "xyes" ; then
+                AC_DEFINE([ENABLE_LDAP], 1, [Enable LDAP Support])
+        elif test "x$enable_ldap$have_ldap" = "xyesno" ; then
+                AC_MSG_ERROR(LDAP support not found!)
+        fi
+fi
+AM_CONDITIONAL(ENABLE_LDAP, test "x$have_ldap" = "xyes")
+
+dnl Should we build gums mapping library?
+AC_ARG_ENABLE([gums],
+        [AS_HELP_STRING([--enable-gums],[Enable support for the GUMS mapping library @<:@default=false@:>@])])
+if test "x$enable_gums" = "xyes" ; then
+        AC_DEFINE([ENABLE_GUMS], 1, [Enable GUMS mapping library support])
+fi
+AM_CONDITIONAL(ENABLE_GUMS, test "x$enable_gums" = "xyes")
+
+dnl Where do the Plugins live
+AC_ARG_WITH(pluginpath,
+    [AS_HELP_STRING([--with-pluginpath=/foo],[Causes the library to look in /foo instead of /usr/lib/libnfsidmap for plugins
+    ])],
+    path_plugins=$withval,
+    path_plugins=""
+    )
+if test -n "$path_plugins" ; then
+        AC_DEFINE_UNQUOTED(PATH_PLUGINS, "$path_plugins",
+                [Define this to change the plugins path])
+fi
+AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
 
 dnl Check for IPv6 support
 AC_IPV6
@@ -537,6 +571,8 @@ AC_CONFIG_FILES([
 	support/misc/Makefile
 	support/nfs/Makefile
 	support/nsm/Makefile
+	support/nfsidmap/Makefile
+	support/nfsidmap/libnfsidmap.pc
 	tools/Makefile
 	tools/locktest/Makefile
 	tools/nlmtest/Makefile

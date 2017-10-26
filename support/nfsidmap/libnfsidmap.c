@@ -59,7 +59,7 @@
 
 #include "nfsidmap.h"
 #include "nfsidmap_internal.h"
-#include "cfg.h"
+#include "conffile.h"
 
 static char *default_domain;
 static struct conf_list *local_realms;
@@ -340,6 +340,7 @@ int nfs4_init_name_mapping(char *conffile)
 	char *nobody_user, *nobody_group;
 	char *nostrip;
 	char *reformatgroup;
+	char *conf_path;
 
 	/* XXX: need to be able to reload configurations... */
 	if (nfs4_plugins) /* already succesfully initialized */
@@ -348,7 +349,7 @@ int nfs4_init_name_mapping(char *conffile)
 		conf_path = conffile;
 	else
 		conf_path = PATH_IDMAPDCONF;
-	conf_init();
+	conf_init(conf_path);
 	default_domain = conf_get_str("General", "Domain");
 	if (default_domain == NULL) {
 		dflt = 1;

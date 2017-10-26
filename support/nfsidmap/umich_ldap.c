@@ -48,7 +48,7 @@
 #include <ldap.h>
 #include "nfsidmap.h"
 #include "nfsidmap_internal.h"
-#include "cfg.h"
+#include "conffile.h"
 
 /* attribute/objectclass default mappings */
 #define DEFAULT_UMICH_OBJCLASS_REMOTE_PERSON	"NFSv4RemotePerson"

@@ -41,8 +41,7 @@
 #include <errno.h>
 #include <err.h>
 
-#include "queue.h"
-#include "cfg.h"
+#include "conffile.h"
 #include "nfsidmap.h"
 #include "nfsidmap_internal.h"
 
@@ -317,7 +316,7 @@ static int static_init() {
 		LIST_INIT (&uid_mappings[i]);
 
 	//get all principals for which we have mappings
-	princ_list = conf_get_tag_list("Static");
+	princ_list = conf_get_tag_list("Static", NULL);
 
 	if (!princ_list) {
 		return -ENOENT;

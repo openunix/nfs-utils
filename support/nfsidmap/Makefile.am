@@ -1,4 +1,4 @@
-ACLOCAL_AMFLAGS = -I m4
+pkgplugindir=$(libdir)/libnfsidmap
 
 if ENABLE_LDAP
 UMICH_LDAP_LIB = umich_ldap.la
@@ -11,7 +11,7 @@ else
 GUMS_MAPPING_LIB =
 endif
 lib_LTLIBRARIES = libnfsidmap.la
-pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
+pkgplugin_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
 
 # Library versioning notes from:
 #  http://sources.redhat.com/autobook/autobook/autobook_91.html
@@ -25,9 +25,9 @@ pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
 #  <age> 	The number of previous additional interfaces supported
 #  		by this library.
 
-libnfsidmap_la_SOURCES = libnfsidmap.c cfg.c strlcpy.c cfg.h nfsidmap_internal.h queue.h
+libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h
 libnfsidmap_la_LDFLAGS = -version-info 3:0:3
-libnfsidmap_la_LIBADD = -ldl
+libnfsidmap_la_LIBADD = -ldl ../../support/nfs/libnfsconf.la
 
 nsswitch_la_SOURCES = nss.c
 nsswitch_la_LDFLAGS = -module -avoid-version

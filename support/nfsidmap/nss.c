@@ -48,7 +48,7 @@
 #include <ctype.h>
 #include "nfsidmap.h"
 #include "nfsidmap_internal.h"
-#include "cfg.h"
+#include "conffile.h"
 #include <syslog.h>
 
 /*
