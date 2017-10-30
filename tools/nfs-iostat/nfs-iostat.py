@@ -326,6 +326,7 @@ class DeviceData:
         ops = float(rpc_stats[0])
         retrans = float(rpc_stats[1] - rpc_stats[0])
         kilobytes = float(rpc_stats[3] + rpc_stats[4]) / 1024
+        queued_for = float(rpc_stats[5])
         rtt = float(rpc_stats[6])
         exe = float(rpc_stats[7])
 
@@ -335,11 +336,13 @@ class DeviceData:
             retrans_percent = (retrans * 100) / ops
             rtt_per_op = rtt / ops
             exe_per_op = exe / ops
+            queued_for_per_op = queued_for / ops
         else:
             kb_per_op = 0.0
             retrans_percent = 0.0
             rtt_per_op = 0.0
             exe_per_op = 0.0
+            queued_for_per_op = 0.0
 
         op += ':'
         print(format(op.lower(), '<16s'), end='')
@@ -348,7 +351,8 @@ class DeviceData:
         print(format('kB/op', '>16s'), end='')
         print(format('retrans', '>16s'), end='')
         print(format('avg RTT (ms)', '>16s'), end='')
-        print(format('avg exe (ms)', '>16s'))
+        print(format('avg exe (ms)', '>16s'), end='')
+        print(format('avg queue (ms)', '>16s'))
 
         print(format((ops / sample_time), '>24.3f'), end='')
         print(format((kilobytes / sample_time), '>16.3f'), end='')
@@ -356,7 +360,8 @@ class DeviceData:
         retransmits = '{0:>10.0f} ({1:>3.1f}%)'.format(retrans, retrans_percent).strip()
         print(format(retransmits, '>16'), end='')
         print(format(rtt_per_op, '>16.3f'), end='')
-        print(format(exe_per_op, '>16.3f'))
+        print(format(exe_per_op, '>16.3f'), end='')
+        print(format(queued_for_per_op, '>16.3f'))
 
     def ops(self, sample_time):
         sends = float(self.__rpc_data['rpcsends'])
@@ -429,7 +434,7 @@ def parse_stats_file(filename):
         words = line.split()
         if len(words) == 0:
             continue
-	if line.startswith("no device mounted") :
+        if line.startswith("no device mounted"):
             continue
         if words[0] == 'device':
             key = words[4]
