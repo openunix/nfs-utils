@@ -842,7 +842,7 @@ read_gss_conf(void)
 {
 	char *s;
 
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	use_memcache = conf_get_bool("gssd", "use-memcache", use_memcache);
 	root_uses_machine_creds = conf_get_bool("gssd", "use-machine-creds",
 						root_uses_machine_creds);

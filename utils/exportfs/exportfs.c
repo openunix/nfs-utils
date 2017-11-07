@@ -107,7 +107,7 @@ main(int argc, char **argv)
 	xlog_stderr(1);
 	xlog_syslog(0);
 
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	xlog_from_conffile("exportfs");
 
 	/* NOTE: following uses "mountd" section of nfs.conf !!!! */

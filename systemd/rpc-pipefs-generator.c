@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	s = conf_get_str("general", "pipefs-directory");
 	if (!s)
 		exit(0);

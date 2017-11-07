@@ -32,7 +32,7 @@ static inline void mount_config_init(char *program)
 	/*
 	 * Read the the default mount options
 	 */
-	conf_init(MOUNTOPTS_CONFFILE);
+	conf_init_file(MOUNTOPTS_CONFFILE);
 }
 
 static inline char *mount_config_opts(char *spec,

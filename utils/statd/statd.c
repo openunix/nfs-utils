@@ -273,7 +273,7 @@ int main (int argc, char **argv)
 	/* Set hostname */
 	MY_NAME = NULL;
 
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	xlog_from_conffile("statd");
 	out_port = conf_get_num("statd", "outgoing-port", out_port);
 	port = conf_get_num("statd", "port", port);

@@ -679,7 +679,7 @@ main(int argc, char **argv)
 	else
 		progname = argv[0];
 
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	xlog_from_conffile("mountd");
 	manage_gids = conf_get_bool("mountd", "manage-gids", manage_gids);
 	descriptors = conf_get_num("mountd", "descriptors", descriptors);

@@ -252,7 +252,7 @@ main(int argc, char **argv)
 			warn("Skipping configuration file \"%s\"", conf_path);
 			conf_path = NULL;
 		} else {
-			conf_init(conf_path);
+			conf_init_file(conf_path);
 			verbose = conf_get_num("General", "Verbosity", 0);
 			cache_entry_expiration = conf_get_num("General",
 					"Cache-Expiration", DEFAULT_IDMAP_CACHE_EXPIRY);
@@ -264,13 +264,13 @@ main(int argc, char **argv)
 		}
 	} else {
 		conf_path = NFS_CONFFILE;
-		conf_init(conf_path);
+		conf_init_file(conf_path);
 		CONF_SAVE(xpipefsdir, conf_get_str("General", "Pipefs-Directory"));
 		if (xpipefsdir != NULL)
 			strlcpy(pipefsdir, xpipefsdir, sizeof(pipefsdir));
 
 		conf_path = _PATH_IDMAPDCONF;
-		conf_init(conf_path);
+		conf_init_file(conf_path);
 		verbose = conf_get_num("General", "Verbosity", 0);
 		cache_entry_expiration = conf_get_num("General",
 				"cache-expiration", DEFAULT_IDMAP_CACHE_EXPIRY);

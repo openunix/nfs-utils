@@ -564,7 +564,7 @@ main(int argc, char **argv)
 	xlog_syslog(1);
 	xlog_stderr(0);
 
-	conf_init(NFS_CONFFILE); 
+	conf_init_file(NFS_CONFFILE); 
 	xlog_from_conffile("nfsdcltrack");
 	val = conf_get_str("nfsdcltrack", "storagedir");
 	if (val)

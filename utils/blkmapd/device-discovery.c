@@ -456,7 +456,7 @@ int main(int argc, char **argv)
 	char *xrpcpipe_dir = NULL;
 
 	strncpy(rpcpipe_dir, RPCPIPE_DIR, sizeof(rpcpipe_dir));
-	conf_init(NFS_CONFFILE);
+	conf_init_file(NFS_CONFFILE);
 	CONF_SAVE(xrpcpipe_dir, conf_get_str("general", "pipefs-directory"));
 	if (xrpcpipe_dir != NULL)
 		strlcpy(rpcpipe_dir, xrpcpipe_dir, sizeof(rpcpipe_dir));

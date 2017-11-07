@@ -7,10 +7,10 @@ libnfs_la_SOURCES = exports.c rmtab.c xio.c rpcmisc.c rpcdispatch.c \
 		   xcommon.c wildmat.c mydaemon.c \
 		   rpc_socket.c getport.c \
 		   svc_socket.c cacheio.c closeall.c nfs_mntent.c \
-		   svc_create.c atomicio.c strlcpy.c strlcat.c
+		   svc_create.c atomicio.c strlcat.c
 libnfs_la_LIBADD = libnfsconf.la
 
-libnfsconf_la_SOURCES = conffile.c xlog.c
+libnfsconf_la_SOURCES = conffile.c xlog.c strlcpy.c
 
 MAINTAINERCLEANFILES = Makefile.in
 

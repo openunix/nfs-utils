@@ -89,6 +89,10 @@ gid_t nobody_gid = (gid_t)-1;
 #define NFS4DNSTXTREC "_nfsv4idmapdomain"
 #endif
 
+/* DEPRECATED these are for ABI compatibility only */
+char * conf_path = PATH_IDMAPDCONF;
+void conf_reinit(void);
+void conf_init(void);
 
 /* Default logging fuction */
 static void default_logger(const char *fmt, ...)
@@ -342,7 +346,6 @@ int nfs4_init_name_mapping(char *conffile)
 	char *nobody_user, *nobody_group;
 	char *nostrip;
 	char *reformatgroup;
-	char *conf_path;
 
 	/* XXX: need to be able to reload configurations... */
 	if (nfs4_plugins) /* already succesfully initialized */
@@ -351,7 +354,7 @@ int nfs4_init_name_mapping(char *conffile)
 		conf_path = conffile;
 	else
 		conf_path = PATH_IDMAPDCONF;
-	conf_init(conf_path);
+	conf_init_file(conf_path);
 	default_domain = conf_get_str("General", "Domain");
 	if (default_domain == NULL) {
 		dflt = 1;
@@ -708,5 +711,15 @@ void nfs4_set_debug(int dbg_level, void (*logger)(const char *, ...))
 	if (logger)
 		idmap_log_func = logger;
 	idmap_verbosity = dbg_level;
+}
+
+void conf_reinit(void)
+{
+	conf_init_file(conf_path);
+}
+
+void conf_init(void)
+{
+	conf_init_file(conf_path);
 }
 
