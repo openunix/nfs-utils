@@ -384,7 +384,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
  */
 static int nfs_validate_options(struct nfsmount_info *mi)
 {
-	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+	/* For remount, ignore mi->spec: the kernel will. */
+	if (!(mi->flags & MS_REMOUNT) &&
+	    !nfs_parse_devname(mi->spec, &mi->hostname, NULL))
 		return 0;
 
 	if (!nfs_nfs_proto_family(mi->options, &mi->family))
