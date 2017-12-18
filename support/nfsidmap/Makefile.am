@@ -25,26 +25,28 @@ pkgplugin_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_L
 #  <age> 	The number of previous additional interfaces supported
 #  		by this library.
 
-libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h
-libnfsidmap_la_LDFLAGS = -version-info 3:0:3
+libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h nfsidmap_common.c
+libnfsidmap_la_LDFLAGS = -version-info 1:0:0
 libnfsidmap_la_LIBADD = -ldl ../../support/nfs/libnfsconf.la
 
-nsswitch_la_SOURCES = nss.c
+nsswitch_la_SOURCES = nss.c nfsidmap_common.c
 nsswitch_la_LDFLAGS = -module -avoid-version
+nsswitch_la_LIBADD = ../../support/nfs/libnfsconf.la
 
 static_la_SOURCES = static.c
 static_la_LDFLAGS = -module -avoid-version
+static_la_LIBADD = ../../support/nfs/libnfsconf.la
 
 umich_ldap_la_SOURCES = umich_ldap.c
 umich_ldap_la_LDFLAGS = -module -avoid-version
-umich_ldap_la_LIBADD = -lldap
+umich_ldap_la_LIBADD = -lldap ../../support/nfs/libnfsconf.la
 
 gums_la_SOURCES = gums.c
 gums_la_LDFLAGS = -module -avoid-version
 
 man3_MANS = nfs4_uid_to_name.3
 man5_MANS	= idmapd.conf.5
-include_HEADERS = nfsidmap.h
+include_HEADERS = nfsidmap.h nfsidmap_plugin.h
 
 EXTRA_DIST = $(man3_MANS) \
 	     $(man5_MANS) \

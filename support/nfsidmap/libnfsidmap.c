@@ -58,14 +58,13 @@
 #include <arpa/nameser_compat.h>
 
 #include "nfsidmap.h"
-#include "nfsidmap_internal.h"
+#include "nfsidmap_private.h"
+#include "nfsidmap_plugin.h"
 #include "conffile.h"
 
+#pragma GCC visibility push(hidden)
+
 static char *default_domain;
-static struct conf_list *local_realms;
-int idmap_verbosity = 0;
-int no_strip = 0;
-int reformat_group = 0;
 static struct mapping_plugin **nfs4_plugins = NULL;
 static struct mapping_plugin **gss_plugins = NULL;
 uid_t nobody_uid = (uid_t)-1;
@@ -89,11 +88,6 @@ gid_t nobody_gid = (gid_t)-1;
 #define NFS4DNSTXTREC "_nfsv4idmapdomain"
 #endif
 
-/* DEPRECATED these are for ABI compatibility only */
-char * conf_path = PATH_IDMAPDCONF;
-void conf_reinit(void);
-void conf_init(void);
-
 /* Default logging fuction */
 static void default_logger(const char *fmt, ...)
 {
@@ -103,7 +97,11 @@ static void default_logger(const char *fmt, ...)
 	vsyslog(LOG_WARNING, fmt, vp);
 	va_end(vp);
 }
+
+#pragma GCC visibility pop
 nfs4_idmap_log_function_t idmap_log_func = default_logger;
+int idmap_verbosity = 2;
+#pragma GCC visibility push(hidden)
 
 static char * toupper_str(char *s)
 {
@@ -329,6 +327,21 @@ out:
 	return ret;
 }
 
+char * get_default_domain(void)
+{
+	int ret;
+
+	if (default_domain)
+		return default_domain;
+	ret = domain_from_dns(&default_domain);
+	if (ret) {
+		IDMAP_LOG(0, ("Unable to determine a default nfsv4 domain; "
+			" consider specifying one in idmapd.conf"));
+		default_domain = "";
+	}
+	return default_domain;
+}
+
 void nfs4_cleanup_name_mapping(void)
 {
 	if (nfs4_plugins)
@@ -338,6 +351,8 @@ void nfs4_cleanup_name_mapping(void)
 	nfs4_plugins = gss_plugins = NULL;
 }
 
+#pragma GCC visibility pop
+
 int nfs4_init_name_mapping(char *conffile)
 {
 	int ret = -ENOENT;
@@ -346,6 +361,7 @@ int nfs4_init_name_mapping(char *conffile)
 	char *nobody_user, *nobody_group;
 	char *nostrip;
 	char *reformatgroup;
+	char *conf_path;
 
 	/* XXX: need to be able to reload configurations... */
 	if (nfs4_plugins) /* already succesfully initialized */
@@ -516,26 +532,6 @@ out:
 	}
 
 	return ret ? -ENOENT: 0;
-}
-
-char * get_default_domain(void)
-{
-	int ret;
-
-	if (default_domain)
-		return default_domain;
-	ret = domain_from_dns(&default_domain);
-	if (ret) {
-		IDMAP_LOG(0, ("Unable to determine a default nfsv4 domain; "
-			" consider specifying one in idmapd.conf"));
-		default_domain = "";
-	}
-	return default_domain;
-}
-
-struct conf_list *get_local_realms(void)
-{
-	return local_realms;
 }
 
 int
@@ -711,15 +707,10 @@ void nfs4_set_debug(int dbg_level, void (*logger)(const char *, ...))
 	if (logger)
 		idmap_log_func = logger;
 	idmap_verbosity = dbg_level;
+	IDMAP_LOG(0, ("Setting log level to %d\n", idmap_verbosity));
 }
 
-void conf_reinit(void)
+const char *nfsidmap_config_get(const char *section, const char *tag)
 {
-	conf_init_file(conf_path);
+	return conf_get_section(section, NULL, tag);
 }
-
-void conf_init(void)
-{
-	conf_init_file(conf_path);
-}
-

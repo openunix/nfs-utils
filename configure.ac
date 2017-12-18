@@ -442,6 +442,8 @@ fi
 AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
 
 AC_SUBST(AM_CPPFLAGS, "$AM_CPPFLAGS -I../../support/nfsidmap")
+AC_DEFINE([HAVE_NFS4_SET_DEBUG], 1,
+          [Bundled lib always has the `nfs4_set_debug' function.])
 
 dnl Check for IPv6 support
 AC_IPV6

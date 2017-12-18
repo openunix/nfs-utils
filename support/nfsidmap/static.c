@@ -43,7 +43,7 @@
 
 #include "conffile.h"
 #include "nfsidmap.h"
-#include "nfsidmap_internal.h"
+#include "nfsidmap_plugin.h"
 
 /*
  * Static Translation Methods

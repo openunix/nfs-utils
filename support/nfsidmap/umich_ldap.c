@@ -47,7 +47,8 @@
 #define LDAP_DEPRECATED 1
 #include <ldap.h>
 #include "nfsidmap.h"
-#include "nfsidmap_internal.h"
+#include "nfsidmap_plugin.h"
+#include "nfsidmap_private.h"
 #include "conffile.h"
 
 /* attribute/objectclass default mappings */

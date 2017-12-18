@@ -53,9 +53,11 @@
 #include "conffile.h"
 #include "xlog.h"
 
+#pragma GCC visibility push(hidden)
+
 static void conf_load_defaults(void);
 static char * conf_readfile(const char *path);
-int conf_set(int , const char *, const char *, const char *, 
+static int conf_set(int , const char *, const char *, const char *, 
 	const char *, int , int );
 static void conf_parse(int trans, char *buf, 
 	char **section, char **subsection);
@@ -77,10 +79,8 @@ TAILQ_HEAD (conf_trans_head, conf_trans) conf_trans_queue;
 /*
  * Radix-64 Encoding.
  */
-const uint8_t bin2asc[]
-  = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-const uint8_t asc2bin[] =
+static const uint8_t asc2bin[] =
 {
   255, 255, 255, 255, 255, 255, 255, 255,
   255, 255, 255, 255, 255, 255, 255, 255,
@@ -489,10 +489,6 @@ static void conf_free_bindings(void)
 	}
 }
 
-#pragma GCC visibility push(hidden)
-/* these are the real fuinctions, hidden from being exported
- * by libnfsidmap ABI compatability */
-
 /* Open the config file and map it into our address space, then parse it.  */
 static void
 conf_load_file(const char *conf_file)
@@ -560,8 +556,6 @@ conf_cleanup(void)
 	TAILQ_INIT(&conf_trans_queue);
 }
 
-#pragma GCC visibility pop
-
 /*
  * Return the numeric value denoted by TAG in section SECTION or DEF
  * if that tag does not exist.
@@ -577,7 +571,6 @@ conf_get_num(const char *section, const char *tag, int def)
 	return def;
 }
 
-#pragma GCC visibility push(hidden)
 /*
  * Return the Boolean value denoted by TAG in section SECTION, or DEF
  * if that tags does not exist.
@@ -609,7 +602,6 @@ conf_get_bool(const char *section, const char *tag, _Bool def)
 		return false;
 	return def;
 }
-#pragma GCC visibility pop
 
 /* Validate X according to the range denoted by TAG in section SECTION.  */
 int
@@ -655,7 +647,6 @@ conf_get_str_with_def(const char *section, const char *tag, char *def)
 	return result;
 }
 
-#pragma GCC visibility push(hidden)
 /*
  * Find a section that may or may not have an argument
  */
@@ -687,7 +678,6 @@ retry:
 	}
 	return 0;
 }
-#pragma GCC visibility pop
 
 /*
  * Build a list of string values out of the comma separated value denoted by
@@ -882,7 +872,7 @@ conf_trans_node(int transaction, enum conf_op op)
 }
 
 /* Queue a set operation.  */
-int
+static int
 conf_set(int transaction, const char *section, const char *arg,
 	const char *tag, const char *value, int override, int is_default)
 {

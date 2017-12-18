@@ -42,8 +42,7 @@
 #include <err.h>
 #include <syslog.h>
 #include "nfsidmap.h"
-#include "nfsidmap_internal.h"
-#include "cfg.h"
+#include "nfsidmap_plugin.h"
 
 #include <voms_apic.h>
 
@@ -232,7 +231,7 @@ static int gums_init(void)
 	char buf[512], type[128], value[256];
 	char *alt_conf = NULL;
 
-	alt_conf = conf_get_str("GUMS", "Conf_File");
+	alt_conf = nfsidmap_config_get("GUMS", "Conf_File");
 	if (alt_conf == NULL)
 		f = fopen(prima_conf, "r");
 	else

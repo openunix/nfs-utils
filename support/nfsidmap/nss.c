@@ -47,9 +47,18 @@
 #include <limits.h>
 #include <ctype.h>
 #include "nfsidmap.h"
-#include "nfsidmap_internal.h"
-#include "conffile.h"
+#include "nfsidmap_plugin.h"
+#include "nfsidmap_private.h"
 #include <syslog.h>
+
+static char *get_default_domain(void)
+{
+	static char default_domain[NFS4_MAX_DOMAIN_LEN] = "";
+	if (default_domain[0] == 0) {
+		nfs4_get_default_domain(NULL, default_domain, NFS4_MAX_DOMAIN_LEN);
+	}
+	return default_domain;
+}
 
 /*
  * NSS Translation Methods
