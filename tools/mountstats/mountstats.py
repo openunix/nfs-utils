@@ -120,9 +120,9 @@ XprtRdmaCounters = [
     'badxids',
     'inflightsends',
     'backlogutil',
-    'read_chunks',
-    'write_chunks',
-    'reply_chunks',
+    'read_segments',
+    'write_segments',
+    'reply_segments',
     'total_rdma_req',
     'total_rdma_rep',
     'pullup',
@@ -718,9 +718,9 @@ class DeviceData:
             if self.__rpc_data['rpcsends'] != 0:
                 print('\tAvg backlog length: %d' % \
                     (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
-            print('\tRead chunks: %d' % self.__rpc_data['read_chunks'])
-            print('\tWrite chunks: %d' % self.__rpc_data['write_chunks'])
-            print('\tReply chunks: %d' % self.__rpc_data['reply_chunks'])
+            print('\tRead segments: %d' % self.__rpc_data['read_segments'])
+            print('\tWrite segments: %d' % self.__rpc_data['write_segments'])
+            print('\tReply segments: %d' % self.__rpc_data['reply_segments'])
             print('\tRegistered: %d bytes' % self.__rpc_data['total_rdma_req'])
             print('\tRDMA received: %d bytes' % self.__rpc_data['total_rdma_rep'])
             print('\tTotal pull-up: %d bytes' % self.__rpc_data['pullup'])
