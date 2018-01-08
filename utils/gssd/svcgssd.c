@@ -63,6 +63,8 @@
 #include "err_util.h"
 #include "conffile.h"
 
+struct state_paths etab;
+
 void
 sig_die(int signal)
 {
@@ -101,7 +103,7 @@ main(int argc, char *argv[])
 	char *principal = NULL;
 	char *s;
 
-	conf_init(NFS_CONFFILE); 
+	conf_init_file(NFS_CONFFILE);
 
 	s = conf_get_str("svcgssd", "principal");
 	if (!s)
