@@ -695,10 +695,6 @@ dump(int verbose, int export_format)
 				continue;
 			}
 			c = '(';
-			if (ep->e_flags & NFSEXP_READONLY)
-				c = dumpopt(c, "ro");
-			else
-				c = dumpopt(c, "rw");
 			if (ep->e_flags & NFSEXP_ASYNC)
 				c = dumpopt(c, "async");
 			else
