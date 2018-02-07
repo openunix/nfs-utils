@@ -25,7 +25,7 @@ pkgplugin_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_L
 #  <age> 	The number of previous additional interfaces supported
 #  		by this library.
 
-libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h nfsidmap_common.c
+libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_common.c
 libnfsidmap_la_LDFLAGS = -version-info 1:0:0
 libnfsidmap_la_LIBADD = -ldl ../../support/nfs/libnfsconf.la
 
