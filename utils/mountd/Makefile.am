@@ -1,5 +1,10 @@
 ## Process this file with automake to produce Makefile.in
 
+OPTLIBS		=
+if CONFIG_JUNCTION
+OPTLIBS		+= ../../support/junction/libjunction.la $(LIBXML2)
+endif
+
 man8_MANS	= mountd.man
 EXTRA_DIST	= $(man8_MANS)
 
@@ -13,7 +18,8 @@ mountd_SOURCES = mountd.c mount_dispatch.c auth.c rmtab.c cache.c \
 mountd_LDADD = ../../support/export/libexport.a \
 	       ../../support/nfs/libnfs.la \
 	       ../../support/misc/libmisc.a \
-	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBDL) $(LIBTIRPC)
+	       $(OPTLIBS) \
+	       $(LIBBSD) $(LIBWRAP) $(LIBNSL) $(LIBBLKID) $(LIBTIRPC)
 mountd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
 		  -I$(top_builddir)/support/include \
 		  -I$(top_srcdir)/support/export
