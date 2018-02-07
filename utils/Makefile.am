@@ -23,6 +23,10 @@ if CONFIG_NFSDCLTRACK
 OPTDIRS += nfsdcltrack
 endif
 
+if CONFIG_JUNCTION
+OPTDIRS += nfsref
+endif
+
 SUBDIRS = \
 	exportfs \
 	mountd \
