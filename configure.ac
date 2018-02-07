@@ -180,6 +180,13 @@ else
 	enable_libmount=no
 fi
 
+AC_ARG_ENABLE(junction,
+	[AC_HELP_STRING([--enable-junction],
+			[enable support for NFS junctions @<:@default=no@:>@])],
+	enable_junction=$enableval,
+	enable_junction=no)
+AM_CONDITIONAL(CONFIG_JUNCTION, [test "$enable_junction" = "yes" ])
+
 AC_ARG_ENABLE(tirpc,
 	[AC_HELP_STRING([--disable-tirpc],
 			[disable use of TI-RPC library @<:@default=no@:>@])],
@@ -243,6 +250,9 @@ AC_LIBTIRPC
 
 dnl Check for -lcap
 AC_LIBCAP
+
+dnl Check for -lxml2
+AC_LIBXML2
 
 # Check whether user wants TCP wrappers support
 AC_TCP_WRAPPERS
@@ -572,6 +582,7 @@ AC_CONFIG_FILES([
 	support/include/sys/fs/Makefile
 	support/include/sys/Makefile
 	support/include/Makefile
+	support/junction/Makefile
 	support/misc/Makefile
 	support/nfs/Makefile
 	support/nsm/Makefile
