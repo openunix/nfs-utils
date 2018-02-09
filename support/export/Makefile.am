@@ -35,7 +35,7 @@ $(GENFILES_CLNT): %_clnt.c: %.x $(RPCGEN)
 
 $(GENFILES_XDR): %_xdr.c: %.x $(RPCGEN)
 	test -f $@ && rm -rf $@ || true
-	$(RPCGEN) -c -o $@ $<
+	$(RPCGEN) -c -i 0 -o $@ $<
 
 $(GENFILES_H): %.h: %.x $(RPCGEN)
 	test -f $@ && rm -rf $@ || true
