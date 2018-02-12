@@ -118,7 +118,6 @@ FedFsStatus	 nsdb_posix_to_path_array(const char *pathname,
  ** Readability helpers
  **/
 
-const char      *nsdb_display_fedfsconnectionsec(const FedFsConnectionSec sectype);
 const char      *nsdb_display_fedfsstatus(const FedFsStatus status);
 void             nsdb_print_fedfsstatus(const FedFsStatus status);
 

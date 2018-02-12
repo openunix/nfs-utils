@@ -32,26 +32,6 @@
 #include "junction.h"
 
 /**
- * Return human-readable equivalent of a FedFsConnectionSec value
- *
- * @param sectype FedFsConneccionSec value
- * @return a static NUL-terminated C string
- */
-const char *
-nsdb_display_fedfsconnectionsec(const FedFsConnectionSec sectype)
-{
-	switch (sectype) {
-	case FEDFS_SEC_NONE:
-		return "FEDFS_SEC_NONE";
-	case FEDFS_SEC_TLS:
-		return "FEDFS_SEC_TLS";
-	default:
-		break;
-	}
-	return "unrecognized security type";
-}
-
-/**
  * Return human-readable equivalent of a FedFsStatus value
  *
  * @param status FedFsStatus code
