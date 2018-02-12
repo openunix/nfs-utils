@@ -5,7 +5,6 @@ SUBDIRS = nfs rpcsvc sys
 noinst_HEADERS = \
 	cld.h \
 	exportfs.h \
-	fedfs_admin.h \
 	ha-callout.h \
 	junction.h \
 	misc.h \

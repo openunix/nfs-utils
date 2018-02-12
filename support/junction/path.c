@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include <netinet/in.h>
 
