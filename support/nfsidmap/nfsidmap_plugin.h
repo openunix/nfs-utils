@@ -51,6 +51,7 @@ struct trans_func {
 
 extern int idmap_verbosity;
 extern nfs4_idmap_log_function_t idmap_log_func;
+struct trans_func *libnfsidmap_plugin_init(void);
 
 /* Level zero always prints, others print depending on verbosity level */
 #define IDMAP_LOG(LVL, MSG) \

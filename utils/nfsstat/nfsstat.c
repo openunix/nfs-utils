@@ -300,7 +300,7 @@ int versions[] = {
 	PRNT_V4
 };
 
-void usage(char *name)
+static void usage(char *name)
 {
 	printf("Usage: %s [OPTION]...\n\
 \n\

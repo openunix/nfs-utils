@@ -210,7 +210,7 @@ static int dm_device_remove_byname(const char *dev_name)
 	return ret;
 }
 
-int dm_device_remove(uint64_t dev)
+static int dm_device_remove(uint64_t dev)
 {
 	struct dm_task *dmt;
 	struct dm_names *dmnames;

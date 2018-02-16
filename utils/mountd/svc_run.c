@@ -57,6 +57,7 @@
 #include <rpc/rpc_com.h>
 #endif
 
+void my_svc_run(void);
 void cache_set_fds(fd_set *fdset);
 int cache_process_req(fd_set *readfds);
 

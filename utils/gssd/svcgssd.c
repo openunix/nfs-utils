@@ -65,7 +65,7 @@
 
 struct state_paths etab;
 
-void
+static void
 sig_die(int signal)
 {
 	/* destroy krb5 machine creds */
@@ -73,7 +73,7 @@ sig_die(int signal)
 	exit(0);
 }
 
-void
+static void
 sig_hup(int signal)
 {
 	/* don't exit on SIGHUP */

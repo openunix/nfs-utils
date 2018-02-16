@@ -56,6 +56,7 @@
 #include "statd.h"
 #include "notlist.h"
 
+void my_svc_exit(void);
 static int	svc_stop = 0;
 
 /*

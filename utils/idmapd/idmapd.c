@@ -196,7 +196,7 @@ flush_nfsd_idmap_cache(void)
 	return ret;
 }
 
-void usage(char *progname)
+static void usage(char *progname)
 {
 	fprintf(stderr, "Usage: %s [-hfvCS] [-p path] [-c path]\n",
 		basename(progname));

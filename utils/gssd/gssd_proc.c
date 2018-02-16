@@ -473,7 +473,7 @@ change_identity(uid_t uid)
 	return 0;
 }
 
-AUTH *
+static AUTH *
 krb5_not_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
 			int *downcall_err, int *chg_err, CLIENT **rpc_clnt)
 {
@@ -519,7 +519,7 @@ out:
 	return auth;
 }
 
-AUTH *
+static AUTH *
 krb5_use_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
 		    char *service, CLIENT **rpc_clnt)
 {

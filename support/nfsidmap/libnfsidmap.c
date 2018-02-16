@@ -64,6 +64,7 @@
 
 #pragma GCC visibility push(hidden)
 
+void nfs4_cleanup_name_mapping(void);
 static char *default_domain;
 static struct mapping_plugin **nfs4_plugins = NULL;
 static struct mapping_plugin **gss_plugins = NULL;
@@ -327,7 +328,7 @@ out:
 	return ret;
 }
 
-char * get_default_domain(void)
+static char *get_default_domain(void)
 {
 	int ret;
 

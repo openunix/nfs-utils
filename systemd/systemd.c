@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include "systemd.h"
 
 static const char hex[16] =
 {

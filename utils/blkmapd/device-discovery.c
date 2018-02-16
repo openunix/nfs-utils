@@ -81,7 +81,7 @@ int    bl_watch_fd, bl_pipe_fd, nfs_pipedir_wfd, rpc_pipedir_wfd;
 int    pidfd = -1;
 
 
-struct bl_disk_path *bl_get_path(const char *filepath,
+static struct bl_disk_path *bl_get_path(const char *filepath,
 				 struct bl_disk_path *paths)
 {
 	struct bl_disk_path *tmp = paths;
@@ -103,7 +103,7 @@ struct bl_disk_path *bl_get_path(const char *filepath,
  * exist for each multipath device. If not, active device path will be
  * chosen for device creation.
  */
-int bl_update_path(enum bl_path_state_e state, struct bl_disk *disk)
+static int bl_update_path(enum bl_path_state_e state, struct bl_disk *disk)
 {
 	struct bl_disk_path *valid_path = disk->valid_path;
 
@@ -112,7 +112,7 @@ int bl_update_path(enum bl_path_state_e state, struct bl_disk *disk)
 	return 1;
 }
 
-void bl_release_disk(void)
+static void bl_release_disk(void)
 {
 	struct bl_disk *disk;
 	struct bl_disk_path *path = NULL;
@@ -133,7 +133,7 @@ void bl_release_disk(void)
 	}
 }
 
-void bl_add_disk(char *filepath)
+static void bl_add_disk(char *filepath)
 {
 	struct bl_disk *disk = NULL;
 	int fd = 0;
@@ -435,7 +435,7 @@ static int bl_event_helper(void)
 	return ret;
 }
 
-void sig_die(int signal)
+static void sig_die(int signal)
 {
 	if (pidfd >= 0) {
 		close(pidfd);

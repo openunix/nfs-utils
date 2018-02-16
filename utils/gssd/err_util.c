@@ -36,6 +36,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include "xlog.h"
+#include "err_util.h"
 
 static int verbosity = 0;
 static int fg = 0;

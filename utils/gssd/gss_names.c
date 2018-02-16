@@ -51,6 +51,7 @@
 
 #include "svcgssd.h"
 #include "gss_util.h"
+#include "gss_names.h"
 #include "err_util.h"
 #include "context.h"
 #include "misc.h"

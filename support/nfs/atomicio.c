@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "nfslib.h"
+
 /*
  * ensure all of data on socket comes through. f==read || f==write
  */

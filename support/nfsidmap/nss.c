@@ -436,7 +436,7 @@ out:
 	return err;
 }
 
-int nss_gss_princ_to_grouplist(char *secname, char *princ,
+static int nss_gss_princ_to_grouplist(char *secname, char *princ,
 			       gid_t *groups, int *ngroups,
 			       extra_mapping_params **UNUSED(ex))
 {

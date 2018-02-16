@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "nfslib.h"
+#include "rpcmisc.h"
 
 #if SIZEOF_SOCKLEN_T - 0 == 0
 #define socklen_t int

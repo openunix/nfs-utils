@@ -547,7 +547,9 @@ my_am_cflags="\
  -pipe \
  -Wall \
  -Wextra \
- -Wstrict-prototypes \
+ -Werror=strict-prototypes \
+ -Werror=missing-prototypes \
+ -Werror=missing-declarations \
 "
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])

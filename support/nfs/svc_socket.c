@@ -25,6 +25,8 @@
 #include <sys/fcntl.h>
 #include <errno.h>
 #include "xlog.h"
+#include "rpcmisc.h"
+#include "nfslib.h"
 
 #include "config.h"
 

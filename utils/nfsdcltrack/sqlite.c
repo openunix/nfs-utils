@@ -51,6 +51,7 @@
 #include <linux/limits.h>
 
 #include "xlog.h"
+#include "sqlite.h"
 
 #define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
 
@@ -203,7 +204,7 @@ rollback:
  * then insert schema version into the parameters table and commit the
  * transaction. On any error, rollback the transaction.
  */
-int
+static int
 sqlite_maindb_init_v2(void)
 {
 	int ret, ret2;

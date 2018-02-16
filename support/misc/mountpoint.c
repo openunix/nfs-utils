@@ -6,6 +6,7 @@
 #include <string.h>
 #include "xcommon.h"
 #include <sys/stat.h>
+#include "misc.h"
 
 int
 is_mountpoint(char *path)

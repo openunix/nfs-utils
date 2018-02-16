@@ -35,6 +35,10 @@
 #include "network.h"
 #include "conffile.h"
 
+char *mountopts_convert(char *value);
+char *is_alias(char *opt);
+char *conf_get_mntopts(char *spec, char *mount_point, char *mount_opts);
+
 #define KBYTES(x)     ((x) * (1024))
 #define MEGABYTES(x)  ((x) * (1048576))
 #define GIGABYTES(x)  ((x) * (1073741824))

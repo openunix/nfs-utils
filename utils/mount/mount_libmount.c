@@ -45,6 +45,8 @@
 #include "error.h"
 #include "utils.h"
 
+char *retrieve_mount_options(struct libmnt_fs *fs);
+
 char *progname;
 int nfs_mount_data_version;
 int verbose;
