@@ -543,20 +543,12 @@ AC_SUBST(CXXFLAGS_FOR_BUILD)
 AC_SUBST(CPPFLAGS_FOR_BUILD)
 AC_SUBST(LDFLAGS_FOR_BUILD)
 
-dnl *************************************************************
-dnl Set up "global" CFLAGS
-dnl *************************************************************
-dnl Use architecture-specific compile flags
-dnl (We use $host and not $build in case we are cross-compiling)
-dnl *************************************************************
-dnl Note: we no longer have arch specific compile flags, but 
-dnl the stub is left here in case they are needed one day.
-case $host in
-  *)
-    ARCHFLAGS="" ;;
-esac
-
-my_am_cflags="-Wall -Wextra -Wstrict-prototypes $ARCHFLAGS -pipe"
+my_am_cflags="\
+ -pipe \
+ -Wall \
+ -Wextra \
+ -Wstrict-prototypes \
+"
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
 
