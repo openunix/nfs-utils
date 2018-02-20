@@ -169,7 +169,7 @@ static int
 flush_nfsd_cache(char *path, time_t now)
 {
 	int fd;
-	char stime[20];
+	char stime[32];
 
 	sprintf(stime, "%ld\n", now);
 	fd = open(path, O_RDWR);

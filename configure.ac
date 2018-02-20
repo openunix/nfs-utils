@@ -550,6 +550,7 @@ my_am_cflags="\
  -Werror=strict-prototypes \
  -Werror=missing-prototypes \
  -Werror=missing-declarations \
+ -Werror=format-overflow=2 \
 "
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])

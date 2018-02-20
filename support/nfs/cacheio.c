@@ -212,7 +212,7 @@ cache_flush(int force)
 {
 	struct stat stb;
 	int c;
-	char stime[20];
+	char stime[32];
 	char path[200];
 	time_t now;
 	/* Note: the order of these caches is important.
