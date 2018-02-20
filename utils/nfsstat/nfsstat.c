@@ -980,8 +980,10 @@ more_stats:
 			}
 			bufp = buf;
 			for (; curindex < numvals; curindex++) {
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
 				n = sscanf(bufp, fmt, &ip->valptr[curindex],
 						&numconsumed);
+#pragma GCC diagnostic warning "-Wformat-nonliteral"
 				if (n != 1)
 					break;
 				if (is_proc) {
