@@ -554,6 +554,19 @@ my_am_cflags="\
  -Werror=format=2 \
  -Werror=undef \
  -Werror=missing-include-dirs \
+ -Werror=strict-aliasing=2 \
+ -Werror=init-self \
+ -Werror=implicit-function-declaration \
+ -Werror=return-type \
+ -Werror=switch \
+ -Werror=overflow \
+ -Werror=int-conversion \
+ -Werror=parentheses \
+ -Werror=incompatible-pointer-types \
+ -Werror=misleading-indentation \
+ -Werror=aggregate-return \
+ -Werror=unused-result \
+ -fno-strict-aliasing \
 "
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
