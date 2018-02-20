@@ -333,7 +333,7 @@ gssd_get_single_krb5_cred(krb5_context context,
 			  struct gssd_k5_kt_princ *ple,
 			  int nocache)
 {
-#if HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
+#ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
 	krb5_get_init_creds_opt *init_opts = NULL;
 #else
 	krb5_get_init_creds_opt options;
@@ -372,7 +372,7 @@ gssd_get_single_krb5_cred(krb5_context context,
 	if ((krb5_unparse_name(context, ple->princ, &pname)))
 		pname = NULL;
 
-#if HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
+#ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
 	code = krb5_get_init_creds_opt_alloc(context, &init_opts);
 	if (code) {
 		k5err = gssd_k5_err_msg(context, code);
@@ -454,7 +454,7 @@ gssd_get_single_krb5_cred(krb5_context context,
 	code = 0;
 	printerr(2, "%s: principal '%s' ccache:'%s'\n", __func__, pname, cc_name);
   out:
-#if HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
+#ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
 	if (init_opts)
 		krb5_get_init_creds_opt_free(context, init_opts);
 #endif

@@ -552,6 +552,7 @@ my_am_cflags="\
  -Werror=missing-declarations \
  -Werror=format-overflow=2 \
  -Werror=format=2 \
+ -Werror=undef \
 "
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
