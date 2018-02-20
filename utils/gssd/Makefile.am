@@ -5,6 +5,8 @@ if CONFIG_SVCGSS
 man8_MANS	+= svcgssd.man
 endif
 
+AM_CPPFLAGS += -I ../../support/nfsidmap
+
 RPCPREFIX	= rpc.
 KPREFIX		= @kprefix@
 sbin_PREFIXED	= gssd

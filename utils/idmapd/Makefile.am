@@ -2,6 +2,8 @@
 
 man8_MANS	= idmapd.man
 
+AM_CPPFLAGS += -I ../../support/nfsidmap
+
 RPCPREFIX	= rpc.
 KPREFIX		= @kprefix@
 sbin_PROGRAMS	= idmapd

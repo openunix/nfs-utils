@@ -448,7 +448,7 @@ if test -n "$path_plugins" ; then
 fi
 AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
 
-AC_SUBST(AM_CPPFLAGS, "$AM_CPPFLAGS -I../../support/nfsidmap")
+AC_SUBST(AM_CPPFLAGS, "$AM_CPPFLAGS")
 AC_DEFINE([HAVE_NFS4_SET_DEBUG], 1,
           [Bundled lib always has the `nfs4_set_debug' function.])
 
@@ -553,6 +553,7 @@ my_am_cflags="\
  -Werror=format-overflow=2 \
  -Werror=format=2 \
  -Werror=undef \
+ -Werror=missing-include-dirs \
 "
 
 AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])

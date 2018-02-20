@@ -3,6 +3,8 @@
 man8_MANS = nfsidmap.man
 sbin_PROGRAMS	= nfsidmap
 
+AM_CPPFLAGS += -I ../../support/nfsidmap
+
 nfsidmap_SOURCES = nfsidmap.c
 nfsidmap_LDADD = -lkeyutils \
 		 ../../support/nfs/libnfs.la \
