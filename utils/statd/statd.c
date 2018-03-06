@@ -225,7 +225,8 @@ static void set_nlm_port(char *type, int port)
 	fd = open(pathbuf, O_WRONLY);
 	if (fd < 0 && errno == ENOENT) {
 		/* probably module not loaded */
-		system("modprobe lockd");
+		if (system("modprobe lockd"))
+			{/* ignore return value */};
 		fd = open(pathbuf, O_WRONLY);
 	}
 	if (fd >= 0) {

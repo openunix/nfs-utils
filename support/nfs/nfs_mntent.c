@@ -13,6 +13,7 @@
 #include <ctype.h>		/* for isdigit */
 #include <sys/stat.h>		/* for umask */
 #include <unistd.h>		/* for ftruncate */
+#include <errno.h>		/* for errno */
 
 #include "nfs_mntent.h"
 #include "nls.h"
@@ -148,9 +149,12 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
 	free(m4);
 	if (res >= 0) {
 		res = fflush(mfp->mntent_fp);
-		if (res < 0)
+		if (res < 0) {
+			nfs_error("Cant't flush out mtab: %s", strerror(errno));
 			/* Avoid leaving a corrupt mtab file */
-			ftruncate(fileno(mfp->mntent_fp), length);
+			if (ftruncate(fileno(mfp->mntent_fp), length))
+				{/* Ignore this failure; Why confuse things */}
+		}
 	}
 	return (res < 0) ? 1 : 0;
 }

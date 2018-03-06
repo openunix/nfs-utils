@@ -504,9 +504,11 @@ int main(int argc, char **argv)
 			close(pidfd);
 			exit(1);
 		}
-		ftruncate(pidfd, 0);
+		if (ftruncate(pidfd, 0) < 0)
+			BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
 		sprintf(pidbuf, "%d\n", getpid());
-		write(pidfd, pidbuf, strlen(pidbuf));
+		if (write(pidfd, pidbuf, strlen(pidbuf)) != (ssize_t)strlen(pidbuf))
+			BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
 	}
 
 	signal(SIGINT, sig_die);

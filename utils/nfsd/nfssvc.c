@@ -68,7 +68,7 @@ nfssvc_mount_nfsdfs(char *progname)
 	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
 	 * code from it and just check for the "threads" file afterward.
 	 */
-	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+	err = system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
 
 	err = stat(NFSD_THREAD_FILE, &statbuf);
 	if (err == 0)
@@ -325,7 +325,8 @@ nfssvc_set_time(const char *type, const int seconds)
 		/* set same value for lockd */
 		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
 		if (fd >= 0) {
-			write(fd, nbuf, strlen(nbuf));
+			if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
+				xlog(L_ERROR, "Unable to write nlm_grace_period : %m");
 			close(fd);
 		}
 	}

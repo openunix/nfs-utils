@@ -811,8 +811,12 @@ int start_statd(void)
 			switch (pid) {
 			case 0: /* child */
 				setgroups(0, NULL);
-				setgid(0);
-				setuid(0);
+				if (setgid(0) < 0)
+					nfs_error(_("%s: setgid(0) failed: %s"),
+						progname, strerror(errno));
+				if (setuid(0) < 0)
+					nfs_error(_("%s: setuid(0) failed: %s"),
+						progname, strerror(errno));
 				execle(START_STATD, START_STATD, NULL, envp);
 				exit(1);
 			case -1: /* error */
