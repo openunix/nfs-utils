@@ -188,7 +188,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
 	int found = 0;
 	struct dirent *best_match_dir = NULL;
 	struct stat best_match_stat, tmp_stat;
-	char buf[1030];
+	char buf[PATH_MAX+4+2+256];
 	char *princname = NULL;
 	char *realm = NULL;
 	int score, best_match_score = 0, err = -EACCES;
@@ -202,39 +202,35 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
 			dirname, strerror(errno));
 	}
 	else if (n > 0) {
-		char statname[1024];
 		for (i = 0; i < n; i++) {
-			snprintf(statname, sizeof(statname),
+			snprintf(buf, sizeof(buf),
 				 "%s/%s", dirname, namelist[i]->d_name);
 			printerr(3, "CC '%s' being considered, "
 				 "with preferred realm '%s'\n",
-				 statname, preferred_realm ?
+				 buf, preferred_realm ?
 					preferred_realm : "<none selected>");
-			if (lstat(statname, &tmp_stat)) {
-				printerr(0, "Error doing stat on '%s'\n",
-					 statname);
+			if (lstat(buf, &tmp_stat)) {
+				printerr(0, "Error doing stat on '%s'\n", buf);
 				free(namelist[i]);
 				continue;
 			}
 			/* Only pick caches owned by the user (uid) */
 			if (tmp_stat.st_uid != uid) {
 				printerr(3, "CC '%s' owned by %u, not %u\n",
-					 statname, tmp_stat.st_uid, uid);
+					 buf, tmp_stat.st_uid, uid);
 				free(namelist[i]);
 				continue;
 			}
 			if (!S_ISREG(tmp_stat.st_mode) &&
 			    !S_ISDIR(tmp_stat.st_mode)) {
 				printerr(3, "CC '%s' is not a regular "
-					 "file or directory\n",
-					 statname);
+					 "file or directory\n", buf);
 				free(namelist[i]);
 				continue;
 			}
 			if (uid == 0 && !root_uses_machine_creds && 
 				strstr(namelist[i]->d_name, "machine_")) {
-				printerr(3, "CC '%s' not available to root\n",
-					 statname);
+				printerr(3, "CC '%s' not available to root\n", buf);
 				free(namelist[i]);
 				continue;
 			}
@@ -865,7 +861,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
 		if (strcmp(realm, default_realm) == 0)
 			tried_default = 1;
 		for (j = 0; svcnames[j] != NULL; j++) {
-			char spn[300];
+			char spn[NI_MAXHOST+2];
 
 			/*
 			 * The special svcname "$" means 'try the active
@@ -1059,7 +1055,7 @@ err_cache:
 int
 gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
 {
-	char			buf[MAX_NETOBJ_SZ], dirname[PATH_MAX];
+	char			buf[PATH_MAX+2+256], dirname[PATH_MAX];
 	const char		*cctype;
 	struct dirent		*d;
 	int			err, i, j;

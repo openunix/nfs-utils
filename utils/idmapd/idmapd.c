@@ -420,7 +420,7 @@ dirscancb(int UNUSED(fd), short UNUSED(which), void *data)
 	int nent, i;
 	struct dirent **ents;
 	struct idmap_client *ic, *nextic;
-	char path[PATH_MAX];
+	char path[PATH_MAX+256]; /* + sizeof(d_name) */
 	struct idmap_clientq *icq = data;
 
 	nent = scandir(pipefsdir, &ents, NULL, alphasort);
