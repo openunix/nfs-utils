@@ -550,7 +550,6 @@ my_am_cflags="\
  -Werror=strict-prototypes \
  -Werror=missing-prototypes \
  -Werror=missing-declarations \
- -Werror=format-overflow=2 \
  -Werror=format=2 \
  -Werror=undef \
  -Werror=missing-include-dirs \
@@ -560,16 +559,30 @@ my_am_cflags="\
  -Werror=return-type \
  -Werror=switch \
  -Werror=overflow \
- -Werror=int-conversion \
  -Werror=parentheses \
- -Werror=incompatible-pointer-types \
- -Werror=misleading-indentation \
  -Werror=aggregate-return \
  -Werror=unused-result \
  -fno-strict-aliasing \
 "
 
-AC_SUBST([AM_CFLAGS], ["$my_am_cflags"])
+AC_DEFUN([CHECK_CCSUPPORT], [
+  my_save_cflags="$CFLAGS"
+  CFLAGS=$1
+  AC_MSG_CHECKING([whether CC supports $1])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+    [AC_MSG_RESULT([yes])]
+    [$2+=$1],
+    [AC_MSG_RESULT([no])]
+  )
+  CFLAGS="$my_save_cflags"
+])
+
+CHECK_CCSUPPORT([-Werror=format-overflow=2], [flg1])
+CHECK_CCSUPPORT([-Werror=int-conversion], [flg2])
+CHECK_CCSUPPORT([-Werror=incompatible-pointer-types], [flg3])
+CHECK_CCSUPPORT([-Werror=misleading-indentation], [flg4])
+
+AC_SUBST([AM_CFLAGS], ["$my_am_cflags $flg1 $flg2 $flg3 $flg4"])
 
 # Make sure that $ACLOCAL_FLAGS are used during a rebuild
 AC_SUBST([ACLOCAL_AMFLAGS], ["-I $ac_macro_dir \$(ACLOCAL_FLAGS)"])
