@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <pwd.h>
 #include <grp.h>
@@ -103,7 +104,7 @@ static int nss_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
 		err = -ENOENT;
 	if (err)
 		goto out_buf;
-	if (no_strip & IDTYPE_USER)
+	if (get_nostrip() & IDTYPE_USER)
 		err = write_name(name, pw->pw_name, domain, len, 0);
 	else
 		err = write_name(name, pw->pw_name, domain, len, 1);
@@ -140,7 +141,7 @@ static int nss_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
 
 	if (err)
 		goto out_buf;
-	if (no_strip & IDTYPE_GROUP)
+	if (get_nostrip() & IDTYPE_GROUP)
 		err = write_name(name, gr->gr_name, domain, len, 0);
 	else
 		err = write_name(name, gr->gr_name, domain, len, 1);
@@ -247,7 +248,7 @@ static int nss_name_to_uid(char *name, uid_t *uid)
 	int err = -ENOENT;
 
 	domain = get_default_domain();
-	if (no_strip & IDTYPE_USER) {
+	if (get_nostrip() & IDTYPE_USER) {
 		pw = nss_getpwnam(name, domain, &err, 0);
 		if (pw != NULL)
 			goto out_uid;
@@ -315,7 +316,7 @@ static int _nss_name_to_gid(char *name, gid_t *gid, int dostrip)
 				  "into domain '%s'", name, domain));
 			goto out;
 		}
-	} else if (reformat_group) {
+	} else if (get_reformat_group()) {
 		ref_name = reformat_name(name);
 		if (ref_name == NULL) {
 			IDMAP_LOG(1, ("nss_name_to_gid: failed to reformat name '%s'",
@@ -335,7 +336,7 @@ static int _nss_name_to_gid(char *name, gid_t *gid, int dostrip)
 			goto out_name;
 		if (dostrip)
 			err = -getgrnam_r(localname, &grbuf, buf, buflen, &gr);
-		else if (reformat_group)
+		else if (get_reformat_group())
 			err = -getgrnam_r(ref_name, &grbuf, buf, buflen, &gr);
 		else
 			err = -getgrnam_r(name, &grbuf, buf, buflen, &gr);
@@ -343,7 +344,7 @@ static int _nss_name_to_gid(char *name, gid_t *gid, int dostrip)
 			if (dostrip)
 				IDMAP_LOG(1, ("nss_name_to_gid: name '%s' not found "
 					  "in domain '%s'", localname, domain));
-			else if (reformat_group)
+			else if (get_reformat_group())
 				IDMAP_LOG(1, ("nss_name_to_gid: name '%s' not found "
 					  "(reformatted)", ref_name));
 			else
@@ -366,7 +367,7 @@ out_buf:
 out_name:
 	if (dostrip)
 		free(localname);
-	if (reformat_group)
+	if (get_reformat_group())
 		free(ref_name);
 out:
 	return err;
@@ -376,7 +377,7 @@ static int nss_name_to_gid(char *name, gid_t *gid)
 {
 	int err = 0;
 
-	if (no_strip & IDTYPE_GROUP) {
+	if (get_nostrip() & IDTYPE_GROUP) {
 		err = _nss_name_to_gid(name, gid, 0);
 		if (!err)
 			goto out;
@@ -459,10 +460,17 @@ out:
 	return ret;
 }
 
+static int nss_plugin_init(void)
+{
+	if (nfsidmap_conf_path)
+		conf_init_file(nfsidmap_conf_path);
+	return 0;
+}
+
 
 struct trans_func nss_trans = {
 	.name		= "nsswitch",
-	.init		= NULL,
+	.init		= nss_plugin_init,
 	.princ_to_ids	= nss_gss_princ_to_ids,
 	.name_to_uid	= nss_name_to_uid,
 	.name_to_gid	= nss_name_to_gid,

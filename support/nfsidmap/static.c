@@ -317,6 +317,9 @@ static int static_init(void) {
 	for (i = 0; i < sizeof uid_mappings / sizeof uid_mappings[0]; i++)
 		LIST_INIT (&uid_mappings[i]);
 
+	if (nfsidmap_conf_path)
+		conf_init_file(nfsidmap_conf_path);
+
 	//get all principals for which we have mappings
 	princ_list = conf_get_tag_list("Static", NULL);
 

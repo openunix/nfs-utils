@@ -37,15 +37,13 @@
 #include "conffile.h"
 
 struct conf_list *get_local_realms(void);
+int get_nostrip(void);
+int get_reformat_group(void);
 
 typedef enum {
 	IDTYPE_USER = 1,
 	IDTYPE_GROUP = 2
 } idtypes;
-
-extern int no_strip;
-extern int reformat_group;
-extern struct conf_list *local_realms;
 
 typedef struct trans_func * (*libnfsidmap_plugin_init_t)(void);
 

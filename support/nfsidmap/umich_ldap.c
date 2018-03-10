@@ -1101,6 +1101,9 @@ umichldap_init(void)
 	char missing_msg[128] = "";
 	char *server_in, *canon_name;
 
+	if (nfsidmap_conf_path)
+		conf_init_file(nfsidmap_conf_path);
+
 	server_in = conf_get_str(LDAP_SECTION, "LDAP_server");
 	ldap_info.base = conf_get_str(LDAP_SECTION, "LDAP_base");
 	ldap_info.people_tree = conf_get_str(LDAP_SECTION, "LDAP_people_base");

@@ -104,14 +104,6 @@ nfs4_idmap_log_function_t idmap_log_func = default_logger;
 int idmap_verbosity = 2;
 #pragma GCC visibility push(hidden)
 
-static char * toupper_str(char *s)
-{
-	size_t i;
-	for (i=0; i < strlen(s); i++)
-		s[i] = toupper(s[i]);
-	return s;
-}
-
 static int id_as_chars(char *name, uid_t *id)
 {
 	long int value;
@@ -354,24 +346,22 @@ void nfs4_cleanup_name_mapping(void)
 
 #pragma GCC visibility pop
 
+const char * nfsidmap_conf_path = PATH_IDMAPDCONF;
+
 int nfs4_init_name_mapping(char *conffile)
 {
 	int ret = -ENOENT;
 	int dflt = 0;
 	struct conf_list *nfs4_methods, *gss_methods;
 	char *nobody_user, *nobody_group;
-	char *nostrip;
-	char *reformatgroup;
-	char *conf_path;
 
 	/* XXX: need to be able to reload configurations... */
 	if (nfs4_plugins) /* already succesfully initialized */
 		return 0;
 	if (conffile)
-		conf_path = conffile;
-	else
-		conf_path = PATH_IDMAPDCONF;
-	conf_init_file(conf_path);
+		nfsidmap_conf_path = conffile;
+	conf_init_file(nfsidmap_conf_path);
+
 	default_domain = conf_get_str("General", "Domain");
 	if (default_domain == NULL) {
 		dflt = 1;
@@ -388,30 +378,8 @@ int nfs4_init_name_mapping(char *conffile)
 	IDMAP_LOG(1, ("libnfsidmap: using%s domain: %s",
 		(dflt ? " (default)" : ""), default_domain));
 
-	/* Get list of "local equivalent" realms.  Meaning the list of realms
-	 * where john@REALM.A is considered the same user as john@REALM.B
-	 * If not specified, default to upper-case of local domain name */
-	local_realms = conf_get_list("General", "Local-Realms");
-	if (local_realms == NULL) {
-		struct conf_list_node *node;
-
-		local_realms = malloc(sizeof *local_realms);
-		if (local_realms == NULL)
-			return -ENOMEM;
-		local_realms->cnt = 0;
-		TAILQ_INIT(&local_realms->fields);
-
-		node = calloc(1, sizeof *node);
-		if (node == NULL)
-			return -ENOMEM;
-		node->field = strdup(get_default_domain());
-		if (node->field == NULL)
-			return -ENOMEM;
-		toupper_str(node->field);
-
-		TAILQ_INSERT_TAIL(&local_realms->fields, node, link);
-		local_realms->cnt++;
-	}
+	struct conf_list *local_realms = get_local_realms();
+	if (local_realms == NULL) return -ENOMEM;
 
 	if (idmap_verbosity >= 1) {
 		struct conf_list_node *r;
@@ -433,26 +401,6 @@ int nfs4_init_name_mapping(char *conffile)
 			}
 		} else 
 			IDMAP_LOG(1, ("libnfsidmap: Realms list: <NULL> "));
-	}
-
-	nostrip = conf_get_str_with_def("General", "No-Strip", "none");
-	if (strcasecmp(nostrip, "both") == 0)
-		no_strip = IDTYPE_USER|IDTYPE_GROUP;
-	else if (strcasecmp(nostrip, "group") == 0)
-		no_strip = IDTYPE_GROUP;
-	else if (strcasecmp(nostrip, "user") == 0)
-		no_strip = IDTYPE_USER;
-	else
-		no_strip = 0;
-
-	if (no_strip & IDTYPE_GROUP) {
-		reformatgroup = conf_get_str_with_def("General", "Reformat-Group", "false");
-		if ((strcasecmp(reformatgroup, "true") == 0) ||
-		    (strcasecmp(reformatgroup, "on") == 0) ||
-		    (strcasecmp(reformatgroup, "yes") == 0))
-			reformat_group = 1;
-		else
-			reformat_group = 0;
 	}
 
 	nfs4_methods = conf_get_list("Translation", "Method");

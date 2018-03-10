@@ -65,5 +65,6 @@ struct trans_func *libnfsidmap_plugin_init(void);
 #endif
 #endif
 
+extern const char *nfsidmap_conf_path;
 extern const char *nfsidmap_config_get(const char *section, const char *tag);
 
