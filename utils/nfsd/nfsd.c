@@ -65,8 +65,8 @@ main(int argc, char **argv)
 	int hcounter = 0;
 	struct conf_list *hosts;
 	int	socket_up = 0;
-	unsigned int minorvers = 0;
-	unsigned int minorversset = 0;
+	unsigned int minorvers = NFSCTL_MINDEFAULT;
+	unsigned int minorversset = NFSCTL_MINDEFAULT;
 	unsigned int minormask = 0;
 	unsigned int versbits = NFSCTL_VERDEFAULT;
 	unsigned int protobits = NFSCTL_PROTODEFAULT;

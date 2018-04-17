@@ -40,6 +40,7 @@ struct nfs_fh_len {
 #define NFSCTL_TCPISSET(_cltbits)     ((_cltbits) & NFSCTL_TCPBIT) 
 
 #define NFSCTL_VERDEFAULT (0xc)       /* versions 3 and 4 */
+#define NFSCTL_MINDEFAULT (0x7)       /* minor versions 4.1 and 4.2 */
 #define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |= (1 << ((_v) - 1))) 
 #define NFSCTL_MINORSET(_cltbits, _v)   ((_cltbits) |= (1 << (_v)))
 #define NFSCTL_UDPSET(_cltbits)       ((_cltbits) |= NFSCTL_UDPBIT)
