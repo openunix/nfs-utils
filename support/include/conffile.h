@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 struct conf_list_node {
 	TAILQ_ENTRY(conf_list_node) link;
@@ -65,7 +66,7 @@ extern void     conf_cleanup(void);
 extern int      conf_match_num(const char *, const char *, int);
 extern int      conf_remove(int, const char *, const char *);
 extern int      conf_remove_section(int, const char *);
-extern void     conf_report(void);
+extern void     conf_report(FILE *);
 
 /*
  * Convert letter from upper case to lower case
