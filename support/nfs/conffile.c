@@ -556,7 +556,7 @@ static void conf_free_bindings(void)
 }
 
 /* Open the config file and map it into our address space, then parse it.  */
-static void
+static int
 conf_load_file(const char *conf_file)
 {
 	int trans;
@@ -566,7 +566,7 @@ conf_load_file(const char *conf_file)
 	conf_data = conf_readfile(conf_file);
 
 	if (conf_data == NULL)
-		return;
+		return 1;
 
 	/* Load default configuration values.  */
 	conf_load_defaults();
@@ -584,10 +584,10 @@ conf_load_file(const char *conf_file)
 
 	/* Apply the new configuration values */
 	conf_end(trans, 1);
-	return;
+	return 0;
 }
 
-void
+int
 conf_init_file(const char *conf_file)
 {
 	unsigned int i;
@@ -598,7 +598,7 @@ conf_init_file(const char *conf_file)
 	TAILQ_INIT (&conf_trans_queue);
 
 	if (conf_file == NULL) conf_file=NFS_CONFFILE;
-	conf_load_file(conf_file);
+	return conf_load_file(conf_file);
 }
 
 /*
