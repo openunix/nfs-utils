@@ -287,8 +287,9 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		/* find the closing ] */
 		ptr = strchr(line, ']');
 		if (ptr == NULL) {
-			xlog_warn("config file error: line %d: "
- 				"non-matched ']', ignoring until next section", lineno);
+			xlog_warn("config error at %s:%d: "
+				  "non-matched ']', ignoring until next section",
+				  filename, lineno);
 			return;
 		}
 
@@ -313,7 +314,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		/* copy the section name */
 		*section = strdup(line);
 		if (!*section) {
-			xlog_warn("conf_parse_line: %d: malloc failed", lineno);
+			xlog_warn("config error at %s:%d:"
+				  "malloc failed", filename, lineno);
 			return;
 		}
 
@@ -324,14 +326,16 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		/* check for the closing " */
 		ptr = strchr(val, '"');
 		if (ptr == NULL) {
-			xlog_warn("config file error: line %d: "
- 				"non-matched '\"', ignoring until next section", lineno);
+			xlog_warn("config error at %s:%d: "
+				  "non-matched '\"', ignoring until next section",
+				filename, lineno);
 			return;
 		}
 		*ptr = '\0';
 		*subsection = strdup(val);
 		if (!*subsection)
-			xlog_warn("conf_parse_line: %d: malloc arg failed", lineno);
+			xlog_warn("config error at %s:%d: "
+				  "malloc failed", filename, lineno);
 		return;
 	}
 
@@ -342,15 +346,17 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 	if (ptr == NULL) {
 		/* Other non-empty lines are weird.  */
 		if (line[strspn(line, " \t")])
-			xlog_warn("config file error: line %d: "
-				"line not empty and not an assignment", lineno);
+			xlog_warn("config error at %s:%d: "
+				"line not empty and not an assignment",
+				filename, lineno);
 		return;
 	}
 
 	/* If no section, we are ignoring the line.  */
 	if (!*section) {
-		xlog_warn("config file error: line %d: "
-			"ignoring line due to no section", lineno);
+		xlog_warn("config error at %s:%d: "
+			  "ignoring line not in a section",
+			  filename, lineno);
 		return;
 	}
 
@@ -367,8 +373,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		val++;
 		ptr = strchr(val, '"');
 		if (ptr == NULL) {
-			xlog_warn("config file error: line %d: "
-				"unmatched quotes", lineno);
+			xlog_warn("config error at %s:%d: "
+				  "unmatched quotes",filename, lineno);
 			return;
 		}
 		*ptr = '\0';
@@ -377,8 +383,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		val++;
 		ptr = strchr(val, '\'');
 		if (ptr == NULL) {
-			xlog_warn("config file error: line %d: "
-				"unmatched quotes", lineno);
+			xlog_warn("config error at %s:%d: "
+				  "unmatched quotes", filename, lineno);
 			return;
 		}
 		*ptr = '\0';
@@ -395,13 +401,13 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 	}
 
 	if (*line == '\0') {
-		xlog_warn("config file error: line %d: "
-			"missing tag in assignment", lineno);
+		xlog_warn("config error at %s:%d: "
+			  "missing tag in assignment", filename, lineno);
 		return;
 	}
 	if (*val == '\0') {
-		xlog_warn("config file error: line %d: "
-			"missing value in assignment", lineno);
+		xlog_warn("config error at %s:%d: "
+			  "missing value in assignment", filename, lineno);
 		return;
 	}
 
@@ -409,14 +415,16 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 		/* load and parse subordinate config files */
 		relpath = relative_path(filename, val);
 		if (relpath == NULL) {
-			xlog_warn("%s:%d: memory failure loading included config",
+			xlog_warn("config error at %s:%d: "
+				"error loading included config",
 				  filename, lineno);
 			return;
 		}
 
 		subconf = conf_readfile(relpath);
 		if (subconf == NULL) {
-			xlog_warn("%s:%d: memory failure loading included config",
+			xlog_warn("config error at %s:%d: "
+				"error loading included config",
 				  filename, lineno);
 			if (relpath)
 				free(relpath);
