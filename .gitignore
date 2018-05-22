@@ -58,6 +58,7 @@ utils/nfsdcltrack/nfsdcltrack
 utils/statd/statd
 tools/locktest/testlk
 tools/getiversion/getiversion
+tools/nfsconf/nfsconf
 support/export/mount.h
 support/export/mount_clnt.c
 support/export/mount_xdr.c

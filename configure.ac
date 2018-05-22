@@ -616,6 +616,7 @@ AC_CONFIG_FILES([
 	tools/rpcgen/Makefile
 	tools/mountstats/Makefile
 	tools/nfs-iostat/Makefile
+	tools/nfsconf/Makefile
 	utils/Makefile
 	utils/blkmapd/Makefile
 	utils/nfsdcltrack/Makefile

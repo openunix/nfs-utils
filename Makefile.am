@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = tools support utils linux-nfs tests systemd
+SUBDIRS = support tools utils linux-nfs tests systemd
 
 MAINTAINERCLEANFILES = Makefile.in
 
