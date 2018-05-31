@@ -98,7 +98,7 @@ main(int argc, char **argv)
 	else
 		NFSCTL_TCPUNSET(protobits);
 	for (i = 2; i <= 4; i++) {
-		char tag[10];
+		char tag[20];
 		sprintf(tag, "vers%d", i);
 		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(versbits, i)))
 			NFSCTL_VERSET(versbits, i);

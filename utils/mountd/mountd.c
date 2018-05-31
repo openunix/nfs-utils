@@ -702,7 +702,7 @@ main(int argc, char **argv)
 	else
 		NFSCTL_TCPUNSET(_rpcprotobits);
 	for (vers = 2; vers <= 4; vers++) {
-		char tag[10];
+		char tag[20];
 		sprintf(tag, "vers%d", vers);
 		if (conf_get_bool("nfsd", tag, NFSCTL_VERISSET(nfs_version, vers)))
 			NFSCTL_VERSET(nfs_version, vers);
