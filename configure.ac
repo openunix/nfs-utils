@@ -157,7 +157,7 @@ AC_ARG_WITH(rpcgen,
 	    RPCGEN_PATH=$rpcgen_path
 	fi
 	AC_SUBST(RPCGEN_PATH)
-	AM_CONDITIONAL(CONFIG_RPCGEN, [test "$RPCGEN_PATH" = ""])
+	AM_CONDITIONAL(CONFIG_RPCGEN, [test "$RPCGEN_PATH" = "internal"])
 AC_ARG_ENABLE(uuid,
 	[AC_HELP_STRING([--disable-uuid], 
 		[Exclude uuid support to avoid buggy libblkid. @<:@default=no@:>@])],
