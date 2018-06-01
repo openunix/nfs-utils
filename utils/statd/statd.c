@@ -231,11 +231,12 @@ static void set_nlm_port(char *type, int port)
 	}
 	if (fd >= 0) {
 		if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
-			fprintf(stderr, "%s: fail to set NLM %s port: %m\n",
-				name_p, type);
+			fprintf(stderr, "%s: fail to set NLM %s port: %s\n",
+				name_p, type, strerror(errno));
 		close(fd);
 	} else
-		fprintf(stderr, "%s: failed to open %s: %m\n", name_p, pathbuf);
+		fprintf(stderr, "%s: failed to open %s: %s\n", 
+			name_p, pathbuf, strerror(errno));
 }
 
 /*

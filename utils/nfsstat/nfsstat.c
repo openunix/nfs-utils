@@ -1013,7 +1013,7 @@ mounts(const char *name)
 	 * be a fatal error -- it usually means the module isn't loaded.
 	 */
 	if ((fp = fopen(name, "r")) == NULL) {
-		fprintf(stderr, "Warning: %s: %m\n", name);
+		fprintf(stderr, "Warning: %s: %s\n", name, strerror(errno));
 		return 0;
 	}
 
@@ -1089,8 +1089,8 @@ out:
 		fclose(fp);
 	if (err) {
 		if (!other_opt) {
-			fprintf(stderr, "Error: No %s Stats (%s: %m). \n",
-					label, file);
+			fprintf(stderr, "Error: No %s Stats (%s: %s). \n",
+					label, file, strerror(errno));
 			exit(2);
 		}
 		*opt = 0;
