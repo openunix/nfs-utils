@@ -97,7 +97,7 @@ typedef struct mexport {
 	struct mclient *	m_client;
 	struct exportent	m_export;
 	int			m_exported;	/* known to knfsd. */
-	int			m_xtabent  : 1,	/* xtab entry exists */
+	unsigned int		m_xtabent  : 1,	/* xtab entry exists */
 				m_mayexport: 1,	/* derived from xtabbed */
 				m_changed  : 1, /* options (may) have changed */
 				m_warned   : 1; /* warned about multiple exports
