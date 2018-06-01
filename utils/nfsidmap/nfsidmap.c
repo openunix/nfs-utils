@@ -283,7 +283,7 @@ static int key_invalidate(char *keystr, int keymask)
 {
 	FILE *fp;
 	char buf[BUFSIZ], *ptr;
-	key_serial_t key;
+	unsigned int key;
 	int mask;
 
 	xlog_syslog(0);
