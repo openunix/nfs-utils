@@ -1125,9 +1125,9 @@ umichldap_init(void)
 
 	/* Verify required information is supplied */
 	if (server_in == NULL || strlen(server_in) == 0)
-		strncat(missing_msg, "LDAP_server ", sizeof(missing_msg));
+		strncat(missing_msg, "LDAP_server ", sizeof(missing_msg)-1);
 	if (ldap_info.base == NULL || strlen(ldap_info.base) == 0)
-		strncat(missing_msg, "LDAP_base ", sizeof(missing_msg));
+		strncat(missing_msg, "LDAP_base ", sizeof(missing_msg)-1);
 	if (strlen(missing_msg) != 0) {
 		IDMAP_LOG(0, ("umichldap_init: Missing required information: "
 			  "%s", missing_msg));

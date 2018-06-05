@@ -310,7 +310,7 @@ main(int argc, char **argv)
 	if (!serverstart && !clientstart)
 		errx(1, "it is illegal to specify both -C and -S");
 
-	strncat(pipefsdir, "/nfs", sizeof(pipefsdir));
+	strncat(pipefsdir, "/nfs", sizeof(pipefsdir)-1);
 
 	daemon_init(fg);
 
