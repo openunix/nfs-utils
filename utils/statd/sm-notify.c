@@ -569,7 +569,7 @@ usage:		fprintf(stderr,
 		if (name == NULL)
 			exit(1);
 
-		strncpy(nsm_hostname, name, sizeof(nsm_hostname));
+		strncpy(nsm_hostname, name, sizeof(nsm_hostname)-1);
 		free(name);
 	}
 

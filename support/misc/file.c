@@ -96,7 +96,7 @@ generic_setup_basedir(const char *progname, const char *parentdir, char *base,
 	}
 
 	/* Ensure we have a clean directory pathname */
-	strncpy(buf, parentdir, sizeof(buf));
+	strncpy(buf, parentdir, sizeof(buf)-1);
 	path = dirname(buf);
 	if (*path == '.') {
 		(void)fprintf(stderr, "%s: Unusable directory %s",

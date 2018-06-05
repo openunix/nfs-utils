@@ -92,7 +92,7 @@ v4root_create(char *path, nfs_export *export)
 
 	dupexportent(&eep, &pseudo_root.m_export);
 	eep.e_hostname = curexp->e_hostname;
-	strncpy(eep.e_path, path, sizeof(eep.e_path));
+	strncpy(eep.e_path, path, sizeof(eep.e_path)-1);
 	if (strcmp(path, "/") != 0)
 		eep.e_flags &= ~NFSEXP_FSID;
 	set_pseudofs_security(&eep, curexp->e_flags);

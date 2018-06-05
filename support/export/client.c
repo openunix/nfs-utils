@@ -482,8 +482,9 @@ add_name(char *old, const char *add)
 		else
 			cp = cp + strlen(cp);
 	}
-	if (old) {
-		strncpy(new, old, cp-old);
+	len = cp-old;
+	if (old && len > 0) {
+		strncpy(new, old, len);
 		new[cp-old] = 0;
 	} else {
 		new[0] = 0;

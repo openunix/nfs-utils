@@ -828,7 +828,7 @@ noauth_flavors:
 
 	data.fd = fsock;
 	memcpy((char *) &data.addr, (char *) nfs_saddr, sizeof(data.addr));
-	strncpy(data.hostname, hostname, sizeof(data.hostname));
+	strncpy(data.hostname, hostname, sizeof(data.hostname)-1);
 
  out_ok:
 	/* Ensure we have enough padding for the following strcat()s */
