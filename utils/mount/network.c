@@ -50,6 +50,8 @@
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
 #include <rpc/pmap_clnt.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 
 #include "sockaddr.h"
 #include "xcommon.h"
@@ -1758,4 +1760,49 @@ int nfs_umount_do_umnt(struct mount_options *options,
 		return EX_FAIL;
 
 	return EX_SUCCESS;
+}
+
+int nfs_is_inaddr_any(struct sockaddr *nfs_saddr)
+{
+	switch (nfs_saddr->sa_family) {
+	case AF_INET: {
+		if (((struct sockaddr_in *)nfs_saddr)->sin_addr.s_addr ==
+				INADDR_ANY)
+			return 1;
+		break;
+	}
+	case AF_INET6:
+		if (!memcmp(&((struct sockaddr_in6 *)nfs_saddr)->sin6_addr,
+				&in6addr_any, sizeof(in6addr_any)))
+			return 1;
+		break;
+	}
+	return 0;
+}
+
+int nfs_addr_matches_localips(struct sockaddr *nfs_saddr)
+{
+	struct ifaddrs *myaddrs, *ifa;
+	int found = 0;
+
+	/* acquire exiting network interfaces */
+	if (getifaddrs(&myaddrs) != 0)
+		return 0;
+
+	/* interate over the available interfaces and check if we
+	 * we find a match to the supplied clientaddr value
+	 */
+	for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL)
+			continue;
+		if (!(ifa->ifa_flags & IFF_UP))
+			continue;
+		if (!memcmp(ifa->ifa_addr, nfs_saddr,
+				sizeof(struct sockaddr))) {
+			found = 1;
+			break;
+		}
+	}
+	freeifaddrs(myaddrs);
+	return found;
 }

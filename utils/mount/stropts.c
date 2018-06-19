@@ -229,7 +229,8 @@ static int nfs_append_addr_option(const struct sockaddr *sap,
 
 /*
  * Called to discover our address and append an appropriate 'clientaddr='
- * option to the options string.
+ * option to the options string. If the supplied 'clientaddr=' value does
+ * not match either IPV4/IPv6 any or a local address, then fail the mount.
  *
  * Returns 1 if 'clientaddr=' option created successfully or if
  * 'clientaddr=' option is already present; otherwise zero.
@@ -242,8 +243,27 @@ static int nfs_append_clientaddr_option(const struct sockaddr *sap,
 	struct sockaddr *my_addr = &address.sa;
 	socklen_t my_len = sizeof(address);
 
-	if (po_contains(options, "clientaddr") == PO_FOUND)
+	if (po_contains(options, "clientaddr") == PO_FOUND) {
+		char *addr = po_get(options, "clientaddr");
+		union nfs_sockaddr nfs_address;
+		struct sockaddr *nfs_saddr = &nfs_address.sa;
+		socklen_t nfs_salen = sizeof(nfs_address);
+
+		/* translate the input for clientaddr to nfs_sockaddr */
+		if (!nfs_string_to_sockaddr(addr, nfs_saddr, &nfs_salen))
+			return 0;
+
+		/* check for IPV4_ANY and IPV6_ANY */
+		if (nfs_is_inaddr_any(nfs_saddr))
+			return 1;
+
+		/* check if ip matches local network addresses */
+		if (!nfs_addr_matches_localips(nfs_saddr))
+			nfs_error(_("%s: [warning] supplied clientaddr=%s "
+				"does not match any existing network "
+				"addresses"), progname, addr);
 		return 1;
+	}
 
 	nfs_callback_address(sap, salen, my_addr, &my_len);
 
