@@ -131,10 +131,12 @@ this way are ro, rw, no_root_squash, root_squash, and all_squash.
 understands the following export options:
 .TP
 .IR secure
-This option requires that requests originate on an Internet port less
-than IPPORT_RESERVED (1024). This option is on by default. To turn it
-off, specify
+This option requires that requests not using gss originate on an
+Internet port less than IPPORT_RESERVED (1024). This option is on by default.
+To turn it off, specify
 .IR insecure .
+(NOTE: older kernels (before upstream kernel version 4.17) enforced this
+requirement on gss requests as well.)
 .TP
 .IR rw
 Allow both read and write requests on this NFS volume. The
