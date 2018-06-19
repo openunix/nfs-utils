@@ -835,6 +835,9 @@ to perform NFS version 4.0 callback requests against
 files on this mount point. If  the  server is unable to
 establish callback connections to clients, performance
 may degrade, or accesses to files may temporarily hang.
+Can specify a value of IPv4_ANY (0.0.0.0) or equivalent
+IPv6 any address which will signal to the NFS server that
+this NFS client does not want delegations.
 .IP
 If this option is not specified, the
 .BR mount (8)
