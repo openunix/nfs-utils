@@ -553,7 +553,7 @@ find_cmd(char *cmdname)
 int
 main(int argc, char **argv)
 {
-	char arg;
+	int arg;
 	char *val;
 	int rc = 0;
 	char *progname, *cmdarg = NULL;
