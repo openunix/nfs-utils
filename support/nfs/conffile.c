@@ -255,13 +255,13 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 	char *inc_section = NULL, *inc_subsection = NULL;
 	char *relpath, *subconf;
 
+	/* Strip off any leading blanks */
+	while (isspace(*line))
+		line++;
+
 	/* Ignore blank lines */
 	if (*line == '\0')
 		return;
-
-	/* Strip off any leading blanks */
-	while (isblank(*line))
-		line++;
 
 	/* Lines starting with '#' or ';' are comments.  */
 	if (*line == '#' || *line == ';')
