@@ -12,7 +12,9 @@ typedef enum {
 	MODE_NONE,
 	MODE_GET,
 	MODE_ISSET,
-	MODE_DUMP
+	MODE_DUMP,
+	MODE_SET,
+	MODE_UNSET
 } confmode_t;
 
 static void usage(const char *name)
@@ -29,11 +31,14 @@ static void usage(const char *name)
 	fprintf(stderr, "      Output one specific config value\n");
 	fprintf(stderr, "  --isset [--arg subsection] {section} {tag}\n");
 	fprintf(stderr, "      Return code indicates if config value is present\n");
+	fprintf(stderr, "  --set [--arg subsection] {section} {tag} {value}\n");
+	fprintf(stderr, "      Set and Write a config value\n");
+	fprintf(stderr, "  --unset [--arg subsection] {section} {tag}\n");
+	fprintf(stderr, "      Remove an existing config value\n");
 }
 
 int main(int argc, char **argv)
 {
-	const char * val;
 	char * confpath = NFS_CONFFILE;
 	char * arg = NULL;
 	int verbose=0;
@@ -47,6 +52,8 @@ int main(int argc, char **argv)
 		int index = 0;
 		struct option long_options[] = {
 			{"get",		no_argument, 0, 'g' },
+			{"set",		no_argument, 0, 's' },
+			{"unset",	no_argument, 0, 'u' },
 			{"arg",	  required_argument, 0, 'a' },
 			{"isset", 	no_argument, 0, 'i' },
 			{"dump",  optional_argument, 0, 'd' },
@@ -55,7 +62,7 @@ int main(int argc, char **argv)
 			{NULL,			  0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "ga:id::f:v", long_options, &index);
+		c = getopt_long(argc, argv, "gsua:id::f:v", long_options, &index);
 		if (c == -1) break;
 
 		switch (c) {
@@ -74,6 +81,12 @@ int main(int argc, char **argv)
 				break;
 			case 'g':
 				mode = MODE_GET;
+				break;
+			case 's':
+				mode = MODE_SET;
+				break;
+			case 'u':
+				mode = MODE_UNSET;
 				break;
 			case 'i':
 				mode = MODE_ISSET;
@@ -105,14 +118,18 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (conf_init_file(confpath)) {
-		/* config file was missing or had an error, warn about it */
-		if (verbose || mode != MODE_ISSET)
-			fprintf(stderr, "Error loading config file %s\n",
-				confpath);
-		/* this isnt fatal for --isset */
-		if (mode != MODE_ISSET)
-			return 1;
+	if (mode != MODE_SET && mode != MODE_UNSET) {
+		if (conf_init_file(confpath)) {
+			/* config file was missing or had an error, warn about it */
+			if (verbose || mode != MODE_ISSET) {
+				fprintf(stderr, "Error loading config file %s\n",
+					confpath);
+			}
+
+			/* this isnt fatal for --isset */
+			if (mode != MODE_ISSET)
+				return 1;
+		}
 	}
 
 	/* --dump mode, output the current configuration */
@@ -144,6 +161,7 @@ int main(int argc, char **argv)
 	if (mode == MODE_GET || mode == MODE_ISSET) {
 		char * section = NULL;
 		char * tag = NULL;
+		const char * val;
 
 		/* test they supplied section and tag names */
 		if (optind+1 >= argc) {
@@ -167,6 +185,41 @@ int main(int argc, char **argv)
 			/* ret=1, no value found, tell the user if they asked */
 			if (mode == MODE_GET && verbose)
 				fprintf(stderr, "Tag '%s' not found\n", tag);
+			ret = 1;
+		}
+	} else
+	if (mode == MODE_SET || mode == MODE_UNSET) {
+		char * section = NULL;
+		char * tag = NULL;
+		char * val = NULL;
+		int need = 2;
+
+		if (mode == MODE_UNSET)
+			need = 1;
+
+		/* test they supplied section and tag names */
+		if (optind+need >= argc) {
+			fprintf(stderr, "Error: insufficient arguments for mode\n");
+			usage(argv[0]);
+			ret = 2;
+			goto cleanup;
+		}
+
+		/* now we have a section and tag name */
+		section = argv[optind++];
+		tag = argv[optind++];
+		if (mode == MODE_SET)
+			val = argv[optind++];
+
+		/* setting an empty string is same as unsetting */
+		if (val!=NULL && *val == '\0') {
+			mode = MODE_UNSET;
+			val = NULL;
+		}
+
+		if (conf_write(confpath, section, arg, tag, val)) {
+			if (verbose)
+				fprintf(stderr, "Error writing config\n");
 			ret = 1;
 		}
 	} else {

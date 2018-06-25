@@ -28,6 +28,25 @@ nfsconf \- Query various NFS configuration settings
 .IR subsection ]
 .IR section
 .IR tag
+.P
+.B nfsconf \-\-set
+.RB [ \-v | \-\-verbose ]
+.RB [ \-f | \-\-file
+.IR infile.conf ]
+.RB [ \-a | \-\-arg
+.IR subsection ]
+.IR section
+.IR tag
+.IR value
+.P
+.B nfsconf \-\-unset
+.RB [ \-v | \-\-verbose ]
+.RB [ \-f | \-\-file
+.IR infile.conf ]
+.RB [ \-a | \-\-arg
+.IR subsection ]
+.IR section
+.IR tag
 .SH DESCRIPTION
 The
 .B nfsconf
@@ -41,6 +60,10 @@ Output an alphabetically sorted dump of the current configuration in conf file f
 Test if a specific tag has a value set.
 .IP "\fB\-g, \-\-get\fP"
 Output the current value of the specified tag.
+.IP "\fB\-s, \-\-set\fP"
+Update or Add a tag and value to the config file, creating the file if necessary.
+.IP "\fB\-u, \-\-unset\fP"
+Remove the specified tag and its value from the config file.
 .SH OPTIONS
 .SS Options valid in all modes
 .TP
@@ -69,6 +92,9 @@ The tool allows for easy testing of configuration values from shell scripts, her
 .TP
 .B nfsconf --file /etc/nfsmount.conf --get --arg /home MountPoint background
 Show default value for \fIbackground\fR option for NFS mounts of the \fI/home\fR path.
+.TP
+.B nfsconf --file /etc/nfs.conf --set nfsd debug 1
+Enable debugging in nfsd
 .SH FILES
 .TP
 .B /etc/nfs.conf
