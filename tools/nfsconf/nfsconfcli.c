@@ -69,7 +69,7 @@ int main(int argc, char **argv)
 			case 0:
 				break;
 			case 'f':
-				/* user specified souce path for config */
+				/* user specified source path for config */
 				confpath = optarg;
 				break;
 			case 'a':
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 		xlog_config(D_ALL, 1);
 	xlog_stderr(1);
 	xlog_syslog(0);
-	xlog_open("nfsconftool");
+	xlog_open("nfsconf");
 
 	if (mode == MODE_NONE) {
 		fprintf(stderr, "Error: No MODE selected.\n");
@@ -223,7 +223,7 @@ int main(int argc, char **argv)
 			ret = 1;
 		}
 	} else {
-		fprintf(stderr, "Mode not yet implimented.\n");
+		fprintf(stderr, "Mode not yet implemented.\n");
 		ret = 2;
 	}
 

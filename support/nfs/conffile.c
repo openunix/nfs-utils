@@ -640,7 +640,7 @@ conf_get_num(const char *section, const char *tag, int def)
 /*
  * Return the Boolean value denoted by TAG in section SECTION, or DEF
  * if that tags does not exist.
- * FALSE is returned for case-insensitve comparisons with 0, f, false, n, no, off
+ * FALSE is returned for case-insensitive comparisons with 0, f, false, n, no, off
  * TRUE is returned for 1, t, true, y, yes, on
  * A failure to match one of these results in DEF
  */

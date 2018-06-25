@@ -79,7 +79,7 @@ Select a different config file to operate upon, default is
 Select a specific sub-section
 .SH EXIT STATUS
 .SS \fB\-\-isset\fR mode
-In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occured.
+In this mode the command will return success (0) if the selected tag has a value, any other exit code indicates the value is not set, or some other error has occurred.
 .SS all other modes
 Success is indicated by an exit status of zero, any other status indicates an error. Error messages are output on stderr, and increasing verbosity will give more detailed explanations if any are available.
 .SH EXAMPLES
@@ -87,7 +87,7 @@ Success is indicated by an exit status of zero, any other status indicates an er
 .B nfsconf -v --dump --file /tmp/testconf.conf  sorted.conf
 Check a new config file for syntax errors and output a sorted version for ease of comparison with existing settings.
 .TP
-.B if ! nfsconf --isset gssd preferred-realm ; then echo 'No prefered realm configured for gss'; fi
+.B if ! nfsconf --isset gssd preferred-realm ; then echo 'No preferred realm configured for gss'; fi
 The tool allows for easy testing of configuration values from shell scripts, here we test if a specific value has been set.
 .TP
 .B nfsconf --file /etc/nfsmount.conf --get --arg /home MountPoint background
