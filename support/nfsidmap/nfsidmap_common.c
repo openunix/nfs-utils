@@ -57,8 +57,10 @@ struct conf_list *get_local_realms(void)
 			return NULL;
 
 		node->field = calloc(1, NFS4_MAX_DOMAIN_LEN);
-		if (node->field == NULL)
+		if (node->field == NULL) {
+			free(node);
 			return NULL;
+		}
 
 		nfs4_get_default_domain(NULL, node->field, NFS4_MAX_DOMAIN_LEN);
 		toupper_str(node->field);

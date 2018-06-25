@@ -326,8 +326,10 @@ nsdb_posix_to_path_array(const char *pathname, char ***path_array)
 			break;
 		next = strchrnul(component, '/');
 		length = (size_t)(next - component);
-		if (length > 255)
+		if (length > 255) {
+			nsdb_free_string_array(result);
 			return FEDFS_ERR_SVRFAULT;
+		}
 
 		result[i] = strndup(component, length);
 		if (result[i] == NULL) {
