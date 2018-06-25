@@ -495,7 +495,7 @@ conf_readfile(const char *path)
 {
 	struct stat sb;
 	if (!path) {
-		xlog_err("conf_readfile: no path given");
+		xlog(L_ERROR, "conf_readfile: no path given");
 		return NULL;
 	}
 
