@@ -67,6 +67,7 @@ extern int      conf_match_num(const char *, const char *, int);
 extern int      conf_remove(int, const char *, const char *);
 extern int      conf_remove_section(int, const char *);
 extern void     conf_report(FILE *);
+extern int      conf_write(const char *, const char *, const char *, const char *, const char *);
 
 /*
  * Convert letter from upper case to lower case
