@@ -727,6 +727,8 @@ retry:
 			continue;
 		if (arg && (cb->arg == NULL || strcasecmp(arg, cb->arg) != 0))
 			continue;
+		if (!arg && cb->arg)
+			continue;
 		if (strcasecmp(tag, cb->tag) != 0)
 			continue;
 		if (cb->value[0] == '$') {
