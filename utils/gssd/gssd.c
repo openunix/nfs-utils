@@ -279,16 +279,16 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
 	 * (commit bf19aacecbeebccb2c3d150a8bd9416b7dba81fe)
 	 */
 	numfields = fscanf(info,
-			   "RPC server: %s\n"
-			   "service: %s (%d) version %d\n"
-			   "address: %s\n"
-			   "protocol: %s\n"
-			   "port: %s\n",
-			   (char *)&server,
-			   (char *)&service, &program, &version,
-			   (char *)&address,
-			   (char *)&protoname,
-			   (char *)&port);
+			   "RPC server: %ms\n"
+			   "service: %ms (%d) version %d\n"
+			   "address: %ms\n"
+			   "protocol: %ms\n"
+			   "port: %ms\n",
+			   &server,
+			   &service, &program, &version,
+			   &address,
+			   &protoname,
+			   &port);
 
 
 	switch (numfields) {
