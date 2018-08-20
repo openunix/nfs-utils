@@ -72,6 +72,7 @@ main(int argc, char **argv)
 	unsigned int protobits = NFSCTL_PROTODEFAULT;
 	int grace = -1;
 	int lease = -1;
+	int force4dot0 = 0;
 
 	progname = basename(argv[0]);
 	haddr = xmalloc(sizeof(char *));
@@ -124,10 +125,14 @@ main(int argc, char **argv)
 		if (!conf_get_bool("nfsd", tag, 1)) {
 			NFSCTL_MINORSET(minorversset, i);
 			NFSCTL_MINORUNSET(minorvers, i);
+			if (i == 0)
+				force4dot0 = 1;
 		}
 		if (conf_get_bool("nfsd", tag, 0)) {
 			NFSCTL_MINORSET(minorversset, i);
 			NFSCTL_MINORSET(minorvers, i);
+			if (i == 0)
+				force4dot0 = 1;
 		}
 	}
 
@@ -188,6 +193,8 @@ main(int argc, char **argv)
 					}
 					NFSCTL_MINORSET(minorversset, i);
 					NFSCTL_MINORUNSET(minorvers, i);
+					if (i == 0)
+						force4dot0 = 1;
 					if (minorvers != 0)
 						break;
 				} else {
@@ -215,6 +222,8 @@ main(int argc, char **argv)
 					}
 					NFSCTL_MINORSET(minorversset, i);
 					NFSCTL_MINORSET(minorvers, i);
+					if (i == 0)
+						force4dot0 = 1;
 				} else
 					minorvers = minorversset = minormask;
 				/* FALLTHRU */
@@ -331,7 +340,7 @@ main(int argc, char **argv)
 	 * Timeouts must also be set before ports are created else we get
 	 * EBUSY.
 	 */
-	nfssvc_setvers(versbits, minorvers, minorversset);
+	nfssvc_setvers(versbits, minorvers, minorversset, force4dot0);
 	if (grace > 0)
 		nfssvc_set_time("grace", grace);
 	if (lease  > 0)
