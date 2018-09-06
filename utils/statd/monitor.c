@@ -197,7 +197,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
 
 	if (!nsm_insert_monitored_host(dnsname,
 				(struct sockaddr *)(char *)&my_addr, argp)) {
-		nlist_free(NULL, clnt);
+		nlist_free(existing ? &rtnl : NULL, clnt);
 		goto failure;
 	}
 
