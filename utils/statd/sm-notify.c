@@ -503,6 +503,7 @@ main(int argc, char **argv)
 	s = conf_get_str("statd", "state-directory-path");
 	if (s && !nsm_setup_pathnames(argv[0], s))
 		exit(1);
+	opt_update_state = conf_get_bool("sm-notify", "update-state", opt_update_state);
 
 	while ((c = getopt(argc, argv, "dm:np:v:P:f")) != -1) {
 		switch (c) {

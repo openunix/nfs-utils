@@ -261,6 +261,10 @@ main(int argc, char **argv)
 				strlcpy(pipefsdir, xpipefsdir, sizeof(pipefsdir));
 			CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
 			CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
+			if (conf_get_bool("General", "server-only", false))
+				clientstart = 0;
+			if (conf_get_bool("General", "client-only", false))
+				serverstart = 0;
 		}
 	} else {
 		conf_path = NFS_CONFFILE;
@@ -276,6 +280,10 @@ main(int argc, char **argv)
 				"cache-expiration", DEFAULT_IDMAP_CACHE_EXPIRY);
 		CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
 		CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
+		if (conf_get_bool("General", "server-only", false))
+			clientstart = 0;
+		if (conf_get_bool("General", "client-only", false))
+			serverstart = 0;
 	}
 
 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
