@@ -238,13 +238,6 @@ AC_ARG_ENABLE(nfsdcltrack,
 	enable_nfsdcltrack=$enableval,
 	enable_nfsdcltrack="yes")
 
-AC_ARG_ENABLE(osdlogin,
-	[AC_HELP_STRING([--enable-osdlogin],
-			[enable osd_login scripts @<:@default=no@:>@])],
-	enable_osdlogin=$enableval,
-	enable_osdlogin="no")
-	AM_CONDITIONAL(CONFIG_OSD_LOGIN, [test "$enable_osdlogin" = "yes" ])
-
 dnl Check for TI-RPC library and headers
 AC_LIBTIRPC
 
@@ -631,7 +624,6 @@ AC_CONFIG_FILES([
 	utils/nfsidmap/Makefile
 	utils/showmount/Makefile
 	utils/statd/Makefile
-	utils/osd_login/Makefile
 	systemd/Makefile
 	tests/Makefile
 	tests/nsm_client/Makefile])
