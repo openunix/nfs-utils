@@ -89,6 +89,7 @@ char *preferred_realm = NULL;
 char *ccachedir = NULL;
 /* Avoid DNS reverse lookups on server names */
 static bool avoid_dns = true;
+static bool use_gssproxy = false;
 int thread_started = false;
 pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
@@ -872,6 +873,7 @@ read_gss_conf(void)
 	if (s)
 		preferred_realm = s;
 
+	use_gssproxy = conf_get_bool("gssd", "use-gss-proxy", use_gssproxy);
 }
 
 int
@@ -955,6 +957,14 @@ main(int argc, char *argv[])
 	if (setenv("HOME", "/", 1)) {
 		printerr(0, "gssd: Unable to set $HOME: %s\n", strerror(errno));
 		exit(1);
+	}
+
+	if (use_gssproxy) {
+		if (setenv("GSS_USE_PROXY", "yes", 1) < 0) {
+			printerr(0, "gssd: Unable to set $GSS_USE_PROXY: %s\n", 
+				strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if (ccachedir) {

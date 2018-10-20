@@ -213,6 +213,7 @@ for details.
 Recognized values:
 .BR use-memcache ,
 .BR use-machine-creds ,
+.BR use-gss-proxy ,
 .BR avoid-dns ,
 .BR limit-to-legacy-enctypes ,
 .BR context-timeout ,
