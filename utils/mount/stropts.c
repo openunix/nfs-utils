@@ -48,6 +48,7 @@
 #include "version.h"
 #include "parse_dev.h"
 #include "conffile.h"
+#include "misc.h"
 
 #ifndef NFS_PROGRAM
 #define NFS_PROGRAM	(100003)
@@ -1078,12 +1079,15 @@ static int nfsmount_fg(struct nfsmount_info *mi)
 		if (nfs_try_mount(mi))
 			return EX_SUCCESS;
 
-		if (errno == EBUSY)
-			/* The only cause of EBUSY is if exactly the desired
-			 * filesystem is already mounted.  That can arguably
-			 * be seen as success.  "mount -a" tries to optimise
-			 * out this case but sometimes fails.  Help it out
-			 * by pretending everything is rosy
+#pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
+		if (errno == EBUSY && is_mountpoint(mi->node))
+#pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
+			/*
+			 * EBUSY can happen when mounting a filesystem that
+			 * is already mounted or when the context= are
+			 * different when using the -o sharecache
+			 *
+			 * Only error out in the latter case.
 			 */
 			return EX_SUCCESS;
 
