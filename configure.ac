@@ -185,7 +185,13 @@ AC_ARG_ENABLE(junction,
 			[enable support for NFS junctions @<:@default=no@:>@])],
 	enable_junction=$enableval,
 	enable_junction=no)
-AM_CONDITIONAL(CONFIG_JUNCTION, [test "$enable_junction" = "yes" ])
+	if test "$enable_junction" = yes; then
+		AC_DEFINE(HAVE_JUNCTION_SUPPORT, 1,
+                          [Define this if you want junction support compiled in])
+	else
+		enable_junction=
+	fi
+	AM_CONDITIONAL(CONFIG_JUNCTION, [test "$enable_junction" = "yes" ])
 
 AC_ARG_ENABLE(tirpc,
 	[AC_HELP_STRING([--disable-tirpc],

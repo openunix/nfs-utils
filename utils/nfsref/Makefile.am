@@ -35,5 +35,3 @@ man8_MANS		= nfsref.man
 
 MAINTAINERCLEANFILES	= Makefile.in
 
-AM_CPPFLAGS		= -I. -I../../support/include
-##AM_LDFLAGS		= -Wl,--as-needed
