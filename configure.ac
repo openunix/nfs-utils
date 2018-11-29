@@ -149,6 +149,7 @@ AC_ARG_WITH(rpcgen,
 	[AC_HELP_STRING([--with-rpcgen=internal], [use internal rpcgen instead of system one])],
 	rpcgen_path=$withval,
 	rpcgen_path=yes )
+	rpcgen_cflags=-Werror=strict-prototypes
 	RPCGEN_PATH=
 	if test "$rpcgen_path" = "yes"; then
 	    for p in /usr/local/bin/rpcgen /usr/bin/rpcgen /bin/rpcgen
@@ -157,6 +158,7 @@ AC_ARG_WITH(rpcgen,
 	    RPCGEN_PATH=$rpcgen_path
 	else
 	    RPCGEN_PATH=internal
+	    rpcgen_cflags=-Wstrict-prototypes
 	fi
 	AC_SUBST(RPCGEN_PATH)
 	AM_CONDITIONAL(CONFIG_RPCGEN, [test "$RPCGEN_PATH" = "internal"])
@@ -548,7 +550,7 @@ my_am_cflags="\
  -pipe \
  -Wall \
  -Wextra \
- -Werror=strict-prototypes \
+ $rpcgen_cflags \
  -Werror=missing-prototypes \
  -Werror=missing-declarations \
  -Werror=format=2 \
