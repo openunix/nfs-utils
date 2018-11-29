@@ -223,7 +223,7 @@ void mount_error(const char *spec, const char *mount_point, int error)
 				  progname, mount_point);
 		break;
 	case EBUSY:
-		nfs_error(_("%s: %s is busy or already mounted"),
+		nfs_error(_("%s: %s is busy or already mounted or sharecache fail"),
 			progname, mount_point);
 		break;
 	case ENOENT:
