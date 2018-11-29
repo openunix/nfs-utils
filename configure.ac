@@ -155,6 +155,8 @@ AC_ARG_WITH(rpcgen,
 	    do if test -f $p ; then RPCGEN_PATH=$p ; break; fi ; done
 	elif test "$rpcgen_path" != "internal"; then
 	    RPCGEN_PATH=$rpcgen_path
+	else
+	    RPCGEN_PATH=internal
 	fi
 	AC_SUBST(RPCGEN_PATH)
 	AM_CONDITIONAL(CONFIG_RPCGEN, [test "$RPCGEN_PATH" = "internal"])
