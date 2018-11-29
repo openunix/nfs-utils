@@ -1830,6 +1830,8 @@ conf_write(const char *filename, const char *section, const char *arg,
 
 			/* this is the section we care about */
 			if (where != NULL && is_section(where->text, section, arg)) {
+				struct outbuffer *section_start = where;
+
 				/* is there an existing assignment */
 				while ((where = TAILQ_NEXT(where, link)) != NULL) {
 					if (is_tag(where->text, tag)) {
@@ -1838,6 +1840,28 @@ conf_write(const char *filename, const char *section, const char *arg,
 					}
 				}
 
+				/* no active assignment, but is there a commented one */
+				if (!found) {
+					where = section_start;
+					while ((where = TAILQ_NEXT(where, link)) != NULL) {
+						if (is_comment(where->text)) {
+							char *cline = where->text;
+							while (isspace(*cline)) 
+								cline++;
+
+							if (*cline != '#') 
+								continue;
+							cline++;
+
+							if (is_tag(cline, tag)) {
+								found = true;
+								break;
+							}
+						}
+					}
+				}
+
+				/* replace the located tag with an updated one */
 				if (found) {
 					struct outbuffer *prev = TAILQ_PREV(where, tailhead, link);
 					bool again = false;
