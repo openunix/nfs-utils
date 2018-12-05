@@ -405,11 +405,6 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 			  "missing tag in assignment", filename, lineno);
 		return;
 	}
-	if (*val == '\0') {
-		xlog_warn("config error at %s:%d: "
-			  "missing value in assignment", filename, lineno);
-		return;
-	}
 
 	if (strcasecmp(line, "include")==0) {
 		/* load and parse subordinate config files */
