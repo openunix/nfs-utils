@@ -450,6 +450,7 @@ if test -n "$path_plugins" ; then
                 [Define this to change the plugins path])
 fi
 AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
+AC_SUBST(PATH_PLUGINS, "$path_plugins")
 
 AC_SUBST(AM_CPPFLAGS, "$AM_CPPFLAGS")
 AC_DEFINE([HAVE_NFS4_SET_DEBUG], 1,
