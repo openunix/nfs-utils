@@ -239,7 +239,7 @@ int bl_discover_devices(void)
 {
 	FILE *f;
 	int n;
-	char buf[PATH_MAX], devname[PATH_MAX], fulldevname[PATH_MAX+NAME_MAX];
+	char buf[PATH_MAX], devname[NAME_MAX], fulldevname[PATH_MAX];
 
 	/* release previous list */
 	bl_release_disk();

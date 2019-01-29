@@ -50,8 +50,8 @@
 
 extern char *progname;
 
-static char errbuf[BUFSIZ];
-static char *erreob = &errbuf[BUFSIZ];
+static char errbuf[PATH_MAX];
+static char *erreob = &errbuf[PATH_MAX];
 
 /* Convert RPC errors into strings */
 static int rpc_strerror(int spos)
