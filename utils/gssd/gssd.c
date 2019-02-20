@@ -172,14 +172,14 @@ gssd_addrstr_to_sockaddr(struct sockaddr *sa, const char *node, const char *port
 		if (sin6->sin6_scope_id) {
 			printerr(0, "ERROR: address %s has non-zero "
 				    "sin6_scope_id!\n", node);
-			freeaddrinfo(res);
+			nfs_freeaddrinfo(res);
 			return false;
 		}
 	}
 #endif /* IPV6_SUPPORTED */
 
 	memcpy(sa, res->ai_addr, res->ai_addrlen);
-	freeaddrinfo(res);
+	nfs_freeaddrinfo(res);
 	return true;
 }
 

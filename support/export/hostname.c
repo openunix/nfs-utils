@@ -130,7 +130,7 @@ host_pton(const char *paddr)
 		if (!inet4 && ai->ai_addr->sa_family == AF_INET) {
 			xlog(D_GENERAL, "%s: failed to convert %s",
 					__func__, paddr);
-			freeaddrinfo(ai);
+			nfs_freeaddrinfo(ai);
 			break;
 		}
 		return ai;
@@ -292,7 +292,7 @@ host_reliable_addrinfo(const struct sockaddr *sap)
 		if (nfs_compare_sockaddr(a->ai_addr, sap))
 			break;
 
-	freeaddrinfo(ai);
+	nfs_freeaddrinfo(ai);
 	ai = NULL;
 	if (!a)
 		goto out;

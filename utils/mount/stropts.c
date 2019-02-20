@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include "nfslib.h"
 #include "sockaddr.h"
 #include "xcommon.h"
 #include "mount.h"
@@ -1268,7 +1269,7 @@ int nfsmount_string(const char *spec, const char *node, char *type,
 	} else
 		nfs_error(_("%s: internal option parsing error"), progname);
 
-	freeaddrinfo(mi.address);
+	nfs_freeaddrinfo(mi.address);
 	free(mi.hostname);
 	return retval;
 }

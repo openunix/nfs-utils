@@ -250,7 +250,7 @@ int nfs_lookup(const char *hostname, const sa_family_t family,
 		break;
 	}
 
-	freeaddrinfo(gai_results);
+	nfs_freeaddrinfo(gai_results);
 	return ret;
 }
 
@@ -307,7 +307,7 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
 			}
 			break;
 		}
-		freeaddrinfo(gai_results);
+		nfs_freeaddrinfo(gai_results);
 	}
 
 	return ret;
@@ -1180,7 +1180,7 @@ static int nfs_ca_gai(const struct sockaddr *sap,
 	*buflen = gai_results->ai_addrlen;
 	memcpy(buf, gai_results->ai_addr, *buflen);
 
-	freeaddrinfo(gai_results);
+	nfs_freeaddrinfo(gai_results);
 
 	return 1;
 }

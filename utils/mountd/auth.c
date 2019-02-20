@@ -297,7 +297,7 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
 		     what, buf, nfs_get_port(caller), path, epath, error);
 	}
 
-	freeaddrinfo(ai);
+	nfs_freeaddrinfo(ai);
 	return exp;
 }
 

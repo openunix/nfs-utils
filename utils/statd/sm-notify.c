@@ -36,6 +36,7 @@
 #include "sockaddr.h"
 #include "xlog.h"
 #include "nsm.h"
+#include "nfslib.h"
 #include "nfsrpc.h"
 
 /* glibc before 2.3.4 */
@@ -179,7 +180,7 @@ smn_verify_my_name(const char *name)
 	case 0:
 		/* @name was a presentation address */
 		retval = smn_get_hostname(ai->ai_addr, ai->ai_addrlen, name);
-		freeaddrinfo(ai);
+		nfs_freeaddrinfo(ai);
 		if (retval == NULL)
 			return NULL;
 		break;
@@ -253,8 +254,7 @@ static void smn_forget_host(struct nsm_host *host)
 	free((void *)host->my_name);
 	free((void *)host->mon_name);
 	free(host->name);
-	if (host->ai)
-		freeaddrinfo(host->ai);
+	nfs_freeaddrinfo(host->ai);
 
 	free(host);
 }
@@ -430,7 +430,7 @@ retry:
 	if (srcport) {
 		if (bind(sock, ai->ai_addr, ai->ai_addrlen) == -1) {
 			xlog(L_ERROR, "Failed to bind RPC socket: %m");
-			freeaddrinfo(ai);
+			nfs_freeaddrinfo(ai);
 			(void)close(sock);
 			return -1;
 		}
@@ -440,7 +440,7 @@ retry:
 		if (smn_bindresvport(sock, ai->ai_addr) == -1) {
 			xlog(L_ERROR,
 				"bindresvport on RPC socket failed: %m");
-			freeaddrinfo(ai);
+			nfs_freeaddrinfo(ai);
 			(void)close(sock);
 			return -1;
 		}
@@ -449,13 +449,13 @@ retry:
 		se = getservbyport((int)nfs_get_port(ai->ai_addr), "udp");
 		if (se != NULL && retry_cnt < 100) {
 			retry_cnt++;
-			freeaddrinfo(ai);
+			nfs_freeaddrinfo(ai);
 			(void)close(sock);
 			goto retry;
 		}
 	}
 
-	freeaddrinfo(ai);
+	nfs_freeaddrinfo(ai);
 	return sock;
 }
 

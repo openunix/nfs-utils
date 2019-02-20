@@ -121,6 +121,7 @@
 #include <krb5.h>
 #include <rpc/auth_gss.h>
 
+#include "nfslib.h"
 #include "gssd.h"
 #include "err_util.h"
 #include "gss_util.h"
@@ -587,7 +588,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
 		goto out;
 	}
 	strncpy(outhost, addrs->ai_canonname, outhostlen);
-	freeaddrinfo(addrs);
+	nfs_freeaddrinfo(addrs);
 	for (c = outhost; *c != '\0'; c++)
 	    *c = tolower(*c);
 
