@@ -50,6 +50,7 @@
 #define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
 
 int lift_grace = 1;
+int force = 0;
 
 struct nsm_host {
 	struct nsm_host *	next;
@@ -480,19 +481,10 @@ nsm_lift_grace_period(void)
 	close(fd);
 	return;
 }
-
-int
-main(int argc, char **argv)
+inline static void 
+read_nfsconf(char **argv)
 {
-	int	c, sock, force = 0;
-	char *	progname;
-	char *	s;
-
-	progname = strrchr(argv[0], '/');
-	if (progname != NULL)
-		progname++;
-	else
-		progname = argv[0];
+	char *s;
 
 	conf_init_file(NFS_CONFFILE);
 	xlog_from_conffile("sm-notify");
@@ -500,10 +492,27 @@ main(int argc, char **argv)
 	opt_srcport = conf_get_str("sm-notify", "outgoing-port");
 	opt_srcaddr = conf_get_str("sm-notify", "outgoing-addr");
 	lift_grace = conf_get_bool("sm-notify", "lift-grace", lift_grace);
+
 	s = conf_get_str("statd", "state-directory-path");
 	if (s && !nsm_setup_pathnames(argv[0], s))
 		exit(1);
 	opt_update_state = conf_get_bool("sm-notify", "update-state", opt_update_state);
+	force = conf_get_bool("sm-notify", "force", force);
+}
+
+int
+main(int argc, char **argv)
+{
+	int	c, sock;
+	char *	progname;
+
+	progname = strrchr(argv[0], '/');
+	if (progname != NULL)
+		progname++;
+	else
+		progname = argv[0];
+
+	read_nfsconf(argv);
 
 	while ((c = getopt(argc, argv, "dm:np:v:P:f")) != -1) {
 		switch (c) {
