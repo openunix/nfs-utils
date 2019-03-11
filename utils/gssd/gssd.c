@@ -890,8 +890,8 @@ main(int argc, char *argv[])
 
 	read_gss_conf();
 
-	verbosity = conf_get_num("gssd", "Verbosity", verbosity);
-	rpc_verbosity = conf_get_num("gssd", "RPC-Verbosity", rpc_verbosity);
+	verbosity = conf_get_num("gssd", "verbosity", verbosity);
+	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
 
 	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
 		switch (opt) {

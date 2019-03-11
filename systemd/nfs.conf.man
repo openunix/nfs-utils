@@ -211,6 +211,8 @@ for details.
 .TP
 .B gssd
 Recognized values:
+.BR verbosity ,
+.BR rpc-verbosity ,
 .BR use-memcache ,
 .BR use-machine-creds ,
 .BR use-gss-proxy ,
