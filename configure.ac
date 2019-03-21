@@ -154,6 +154,9 @@ AC_ARG_WITH(rpcgen,
 	if test "$rpcgen_path" = "yes"; then
 	    for p in /usr/local/bin/rpcgen /usr/bin/rpcgen /bin/rpcgen
 	    do if test -f $p ; then RPCGEN_PATH=$p ; break; fi ; done
+		if test -z "$RPCGEN_PATH"; then
+			AC_MSG_ERROR([Please install rpcgen or use --with-rpcgen])
+		fi
 	elif test "$rpcgen_path" != "internal"; then
 	    RPCGEN_PATH=$rpcgen_path
 	else
