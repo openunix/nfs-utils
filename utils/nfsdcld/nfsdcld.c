@@ -46,6 +46,7 @@
 #include "sqlite.h"
 #include "../mount/version.h"
 #include "conffile.h"
+#include "legacy.h"
 
 #ifndef DEFAULT_PIPEFS_DIR
 #define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
@@ -510,6 +511,15 @@ cld_gracedone(struct cld_client *clnt)
 
 	ret = sqlite_grace_done();
 
+	if (first_time) {
+		if (num_cltrack_records > 0)
+			sqlite_delete_cltrack_records();
+		if (num_legacy_records > 0)
+			legacy_clear_recdir();
+		sqlite_first_time_done();
+		first_time = 0;
+	}
+
 reply:
 	/* set up reply: downcall with 0 status */
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
@@ -642,6 +652,9 @@ main(int argc, char **argv)
 	char *storagedir = CLD_DEFAULT_STORAGEDIR;
 	struct cld_client clnt;
 	char *s;
+	first_time = 0;
+	num_cltrack_records = 0;
+	num_legacy_records = 0;
 
 	memset(&clnt, 0, sizeof(clnt));
 

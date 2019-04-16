@@ -29,5 +29,7 @@ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
 int sqlite_grace_start(void);
 int sqlite_grace_done(void);
 int sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt);
+int sqlite_delete_cltrack_records(void);
+int sqlite_first_time_done(void);
 
 #endif /* _SQLITE_H */

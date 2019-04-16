@@ -15,19 +15,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _CLD_INTERNAL_H_
-#define _CLD_INTERNAL_H_
+#ifndef _LEGACY_H_
+#define _LEGACY_H_
 
-struct cld_client {
-	int			cl_fd;
-	struct event		cl_event;
-	struct cld_msg	cl_msg;
-};
+void legacy_load_clients_from_recdir(int *);
+void legacy_clear_recdir(void);
 
-uint64_t current_epoch;
-uint64_t recovery_epoch;
-int first_time;
-int num_cltrack_records;
-int num_legacy_records;
-
-#endif /* _CLD_INTERNAL_H_ */
+#endif /* _LEGACY_H_ */

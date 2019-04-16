@@ -64,8 +64,11 @@
 #include "sqlite.h"
 #include "cld.h"
 #include "cld-internal.h"
+#include "conffile.h"
+#include "legacy.h"
 
 #define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
+#define CLTRACK_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
 
 /* in milliseconds */
 #define CLD_SQLITE_BUSY_TIMEOUT 10000
@@ -73,6 +76,7 @@
 /* private data structures */
 
 /* global variables */
+static char *cltrack_storagedir = CLTRACK_DEFAULT_STORAGEDIR;
 
 /* reusable pathname and sql command buffer */
 static char buf[PATH_MAX];
@@ -130,6 +134,37 @@ sqlite_query_schema_version(void)
 	}
 
 	ret = sqlite3_column_int(stmt, 0);
+out:
+	sqlite3_finalize(stmt);
+	return ret;
+}
+
+static int
+sqlite_query_first_time(int *first_time)
+{
+	int ret;
+	sqlite3_stmt *stmt = NULL;
+
+	/* prepare select query */
+	ret = sqlite3_prepare_v2(dbh,
+		"SELECT value FROM parameters WHERE key == \"first_time\";",
+		 -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(D_GENERAL, "Unable to prepare select statement: %s",
+			sqlite3_errmsg(dbh));
+		goto out;
+	}
+
+	/* query first_time */
+	ret = sqlite3_step(stmt);
+	if (ret != SQLITE_ROW) {
+		xlog(D_GENERAL, "Select statement execution failed: %s",
+				sqlite3_errmsg(dbh));
+		goto out;
+	}
+
+	*first_time = sqlite3_column_int(stmt, 0);
+	ret = 0;
 out:
 	sqlite3_finalize(stmt);
 	return ret;
@@ -227,6 +262,18 @@ sqlite_maindb_update_schema(int oldversion)
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "Unable to update schema version: %s", err);
 		goto rollback;
+	}
+
+	ret = sqlite_query_first_time(&first_time);
+	if (ret != SQLITE_OK) {
+		/* insert first_time into parameters table */
+		ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO parameters "
+					"values (\"first_time\", \"1\");",
+					NULL, NULL, &err);
+		if (ret != SQLITE_OK) {
+			xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
+			goto rollback;
+		}
 	}
 
 	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
@@ -338,6 +385,15 @@ sqlite_maindb_init_v3(void)
 		goto rollback;
 	}
 
+	/* insert first_time into parameters table */
+	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO parameters "
+				"values (\"first_time\", \"1\");",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
+		goto rollback;
+	}
+
 	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "Unable to commit transaction: %s", err);
@@ -389,6 +445,153 @@ sqlite_startup_query_grace(void)
 out:
 	sqlite3_finalize(stmt);
 	return ret;
+}
+
+static int
+sqlite_attach_db(const char *path)
+{
+	int ret;
+	char dbpath[PATH_MAX];
+	struct stat stb;
+	sqlite3_stmt *stmt = NULL;
+
+	ret = snprintf(dbpath, PATH_MAX - 1, "%s/main.sqlite", path);
+	if (ret < 0)
+		return ret;
+
+	dbpath[PATH_MAX - 1] = '\0';
+	ret = stat(dbpath, &stb);
+	if (ret < 0)
+		return ret;
+
+	xlog(D_GENERAL, "attaching %s", dbpath);
+	ret = sqlite3_prepare_v2(dbh, "ATTACH DATABASE ? AS attached;",
+			-1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: unable to prepare attach statement: %s",
+				__func__, sqlite3_errmsg(dbh));
+		return ret;
+	}
+
+	ret = sqlite3_bind_text(stmt, 1, dbpath, strlen(dbpath), SQLITE_STATIC);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: bind text failed: %s",
+				__func__, sqlite3_errmsg(dbh));
+		return ret;
+	}
+
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_DONE)
+		ret = SQLITE_OK;
+	else
+		xlog(L_ERROR, "%s: unexpected return code from attach: %s",
+				__func__, sqlite3_errmsg(dbh));
+
+	sqlite3_finalize(stmt);
+	stmt = NULL;
+	return ret;
+}
+
+static int
+sqlite_detach_db(void)
+{
+	int ret;
+	char *err = NULL;
+
+	xlog(D_GENERAL, "detaching database");
+	ret = sqlite3_exec(dbh, "DETACH DATABASE attached;", NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to detach attached db: %s", err);
+	}
+
+	sqlite3_free(err);
+	return ret;
+}
+
+/*
+ * Copies client records from the nfsdcltrack database as part of a one-time
+ * "upgrade".
+ *
+ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0).
+ * Returns the number of records copied via "num_rec".
+ */
+static int
+sqlite_copy_cltrack_records(int *num_rec)
+{
+	int ret, ret2;
+	char *s;
+	char *err = NULL;
+	sqlite3_stmt *stmt = NULL;
+
+	s = conf_get_str("nfsdcltrack", "storagedir");
+	if (s)
+		cltrack_storagedir = s;
+	ret = sqlite_attach_db(cltrack_storagedir);
+	if (ret)
+		goto out;
+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+				&err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+		goto rollback;
+	}
+	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016lx\";",
+			current_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		goto rollback;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		ret = -EINVAL;
+		goto rollback;
+	}
+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to clear records from current epoch: %s", err);
+		goto rollback;
+	}
+	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016lx\" "
+				"SELECT id FROM attached.clients;",
+				current_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		goto rollback;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		ret = -EINVAL;
+		goto rollback;
+	}
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+			__func__, sqlite3_errmsg(dbh));
+		goto rollback;
+	}
+	ret = sqlite3_step(stmt);
+	if (ret != SQLITE_DONE) {
+		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
+				__func__, sqlite3_errmsg(dbh));
+		goto rollback;
+	}
+	*num_rec = sqlite3_changes(dbh);
+	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+		goto rollback;
+	}
+cleanup:
+	sqlite3_finalize(stmt);
+	sqlite3_free(err);
+	sqlite_detach_db();
+out:
+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+	return ret;
+rollback:
+	*num_rec = 0;
+	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+	if (ret2 != SQLITE_OK)
+		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+	goto cleanup;
 }
 
 /* Open the database and set up the database handle for it */
@@ -464,6 +667,23 @@ sqlite_prepare_dbh(const char *topdir)
 	}
 
 	ret = sqlite_startup_query_grace();
+
+	ret = sqlite_query_first_time(&first_time);
+	if (ret)
+		goto out_close;
+
+	/* one-time "upgrade" from older client tracking methods */
+	if (first_time) {
+		sqlite_copy_cltrack_records(&num_cltrack_records);
+		xlog(D_GENERAL, "%s: num_cltrack_records = %d\n",
+			__func__, num_cltrack_records);
+		legacy_load_clients_from_recdir(&num_legacy_records);
+		xlog(D_GENERAL, "%s: num_legacy_records = %d\n",
+			__func__, num_legacy_records);
+		if (num_cltrack_records > 0 && num_legacy_records > 0)
+			xlog(L_WARNING, "%s: first-time upgrade detected "
+				"both cltrack and legacy records!\n", __func__);
+	}
 
 	return ret;
 out_close:
@@ -833,5 +1053,57 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
 	if (ret == SQLITE_DONE)
 		ret = 0;
 	sqlite3_finalize(stmt);
+	return ret;
+}
+
+/*
+ * Cleans out the old nfsdcltrack database.
+ *
+ * Called upon receipt of the first "GraceDone" upcall only.
+ */
+int
+sqlite_delete_cltrack_records(void)
+{
+	int ret;
+	char *s;
+	char *err = NULL;
+
+	s = conf_get_str("nfsdcltrack", "storagedir");
+	if (s)
+		cltrack_storagedir = s;
+	ret = sqlite_attach_db(cltrack_storagedir);
+	if (ret)
+		goto out;
+	ret = sqlite3_exec(dbh, "DELETE FROM attached.clients;",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to clear records from cltrack db: %s",
+				err);
+	}
+	sqlite_detach_db();
+out:
+	sqlite3_free(err);
+	return ret;
+}
+
+/*
+ * Sets first_time to 0 in the parameters table to ensure we only
+ * copy old client tracking records into the database one time.
+ *
+ * Called upon receipt of the first "GraceDone" upcall only.
+ */
+int
+sqlite_first_time_done(void)
+{
+	int ret;
+	char *err = NULL;
+
+	ret = sqlite3_exec(dbh, "UPDATE parameters SET value = \"0\" "
+				"WHERE key = \"first_time\";",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK)
+		xlog(L_ERROR, "Unable to clear first_time: %s", err);
+
+	sqlite3_free(err);
 	return ret;
 }
