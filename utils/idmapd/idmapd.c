@@ -59,6 +59,7 @@
 #include <grp.h>
 #include <limits.h>
 #include <ctype.h>
+#include <libgen.h>
 #include <nfsidmap.h>
 
 #ifdef HAVE_CONFIG_H
