@@ -4,11 +4,14 @@
 # overridden at config time. The kernel "knows" the /sbin name.
 sbindir = /sbin
 
-man8_MANS	= nfsdcltrack.man
+man8_MANS	= nfsdcld.man nfsdcltrack.man
 EXTRA_DIST	= $(man8_MANS)
 
 AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
-sbin_PROGRAMS	= nfsdcltrack
+sbin_PROGRAMS	= nfsdcld nfsdcltrack
+
+nfsdcld_SOURCES = nfsdcld.c sqlite.c
+nfsdcld_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
 
 noinst_HEADERS	= sqlite.h
 
