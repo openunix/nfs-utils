@@ -163,6 +163,21 @@ Location of the rpc_pipefs filesystem. The default value is
 .IX Item "-s storagedir, --storagedir=storage_dir"
 Directory where stable storage information should be kept. The default
 value is \fI/var/lib/nfs/nfsdcld\fR.
+.SH "CONFIGURATION FILE"
+.IX Header "CONFIGURATION FILE"
+The following values are recognized in the \fB[nfsdcld]\fR section
+of the \fI/etc/nfs.conf\fR configuration file:
+.IP "\fBstoragedir\fR" 4
+.IX Item "storagedir"
+Equivalent to \fB\-s\fR/\fB\-\-storagedir\fR.
+.IP "\fBdebug\fR" 4
+.IX Item "debug"
+Setting "debug = 1" is equivalent to \fB\-d\fR/\fB\-\-debug\fR.
+.LP
+In addition, the following value is recognized from the \fB[general]\fR section:
+.IP "\fBpipefs\-directory\fR" 4
+.IX Item "pipefs-directory"
+Equivalent to \fB\-p\fR/\fB\-\-pipefsdir\fR.
 .SH "NOTES"
 .IX Header "NOTES"
 The Linux kernel NFSv4 server has historically tracked this information

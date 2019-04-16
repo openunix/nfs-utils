@@ -45,6 +45,7 @@
 #include "cld-internal.h"
 #include "sqlite.h"
 #include "../mount/version.h"
+#include "conffile.h"
 
 #ifndef DEFAULT_PIPEFS_DIR
 #define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
@@ -640,6 +641,7 @@ main(int argc, char **argv)
 	char *progname;
 	char *storagedir = CLD_DEFAULT_STORAGEDIR;
 	struct cld_client clnt;
+	char *s;
 
 	memset(&clnt, 0, sizeof(clnt));
 
@@ -652,6 +654,17 @@ main(int argc, char **argv)
 	event_init();
 	xlog_syslog(0);
 	xlog_stderr(1);
+
+	conf_init_file(NFS_CONFFILE);
+	s = conf_get_str("general", "pipefs-directory");
+	if (s)
+		strlcpy(pipefs_dir, s, sizeof(pipefs_dir));
+	s = conf_get_str("nfsdcld", "storagedir");
+	if (s)
+		storagedir = s;
+	rc = conf_get_num("nfsdcld", "debug", 0);
+	if (rc > 0)
+		xlog_config(D_ALL, 1);
 
 	/* process command-line options */
 	while ((arg = getopt_long(argc, argv, "hdFp:s:", longopts,
