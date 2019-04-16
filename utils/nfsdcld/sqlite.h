@@ -26,8 +26,6 @@ int sqlite_prepare_dbh(const char *topdir);
 int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
 int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
 int sqlite_check_client(const unsigned char *clname, const size_t namelen);
-int sqlite_remove_unreclaimed(const time_t grace_start);
-int sqlite_query_reclaiming(const time_t grace_start);
 int sqlite_grace_start(void);
 int sqlite_grace_done(void);
 int sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt);
