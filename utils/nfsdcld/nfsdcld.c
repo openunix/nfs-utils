@@ -42,7 +42,9 @@
 #include "xlog.h"
 #include "nfslib.h"
 #include "cld.h"
+#include "cld-internal.h"
 #include "sqlite.h"
+#include "../mount/version.h"
 
 #ifndef PIPEFS_DIR
 #define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
@@ -54,19 +56,17 @@
 #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcld"
 #endif
 
+#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
+
 #define UPCALL_VERSION		1
 
 /* private data structures */
-struct cld_client {
-	int			cl_fd;
-	struct event		cl_event;
-	struct cld_msg	cl_msg;
-};
 
 /* global variables */
 static char *pipepath = DEFAULT_CLD_PATH;
 static int 		inotify_fd = -1;
 static struct event	pipedir_event;
+static bool old_kernel = false;
 
 static struct option longopts[] =
 {
@@ -298,6 +298,43 @@ out:
 	return ret;
 }
 
+/*
+ * Older kernels will not tell nfsdcld when a grace period has started.
+ * Therefore we have to peek at the /proc/fs/nfsd/v4_end_grace file to
+ * see if nfsd is in grace.  We have to do this for create and remove
+ * upcalls to ensure that the correct table is being updated - otherwise
+ * we could lose client records when the grace period is lifted.
+ */
+static int
+cld_check_grace_period(void)
+{
+	int fd, ret = 0;
+	char c;
+
+	if (!old_kernel)
+		return 0;
+	if (recovery_epoch != 0)
+		return 0;
+	fd = open(NFSD_END_GRACE_FILE, O_RDONLY);
+	if (fd < 0) {
+		xlog(L_WARNING, "Unable to open %s: %m",
+			NFSD_END_GRACE_FILE);
+		return 1;
+	}
+	if (read(fd, &c, 1) < 0) {
+		xlog(L_WARNING, "Unable to read from %s: %m",
+			NFSD_END_GRACE_FILE);
+		return 1;
+	}
+	close(fd);
+	if (c == 'N') {
+		xlog(L_WARNING, "nfsd is in grace but didn't send a gracestart upcall, "
+			"please update the kernel");
+		ret = sqlite_grace_start();
+	}
+	return ret;
+}
+
 static void
 cld_not_implemented(struct cld_client *clnt)
 {
@@ -332,14 +369,17 @@ cld_create(struct cld_client *clnt)
 	ssize_t bsize, wsize;
 	struct cld_msg *cmsg = &clnt->cl_msg;
 
+	ret = cld_check_grace_period();
+	if (ret)
+		goto reply;
+
 	xlog(D_GENERAL, "%s: create client record.", __func__);
 
 
 	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
-				   cmsg->cm_u.cm_name.cn_len,
-				   false,
-				   false);
+				   cmsg->cm_u.cm_name.cn_len);
 
+reply:
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
 	bsize = sizeof(*cmsg);
@@ -365,11 +405,16 @@ cld_remove(struct cld_client *clnt)
 	ssize_t bsize, wsize;
 	struct cld_msg *cmsg = &clnt->cl_msg;
 
+	ret = cld_check_grace_period();
+	if (ret)
+		goto reply;
+
 	xlog(D_GENERAL, "%s: remove client record.", __func__);
 
 	ret = sqlite_remove_client(cmsg->cm_u.cm_name.cn_id,
 				   cmsg->cm_u.cm_name.cn_len);
 
+reply:
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
 	bsize = sizeof(*cmsg);
@@ -396,12 +441,26 @@ cld_check(struct cld_client *clnt)
 	ssize_t bsize, wsize;
 	struct cld_msg *cmsg = &clnt->cl_msg;
 
+	/*
+	 * If we get a check upcall at all, it means we're talking to an old
+	 * kernel.  Furthermore, if we're not in grace it means this is the
+	 * first client to do a reclaim.  Log a message and use
+	 * sqlite_grace_start() to advance the epoch numbers.
+	 */
+	if (recovery_epoch == 0) {
+		xlog(D_GENERAL, "%s: received a check upcall, please update the kernel",
+			__func__);
+		ret = sqlite_grace_start();
+		if (ret)
+			goto reply;
+	}
+
 	xlog(D_GENERAL, "%s: check client record", __func__);
 
 	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
-				  cmsg->cm_u.cm_name.cn_len,
-				  false);
+				  cmsg->cm_u.cm_name.cn_len);
 
+reply:
 	/* set up reply */
 	cmsg->cm_status = ret ? -EACCES : ret;
 
@@ -429,16 +488,85 @@ cld_gracedone(struct cld_client *clnt)
 	ssize_t bsize, wsize;
 	struct cld_msg *cmsg = &clnt->cl_msg;
 
-	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
-			cmsg->cm_u.cm_gracetime);
+	/*
+	 * If we got a "gracedone" upcall while we're not in grace, then
+	 * 1) we must be talking to an old kernel
+	 * 2) no clients attempted to reclaim
+	 * In that case, log a message and use sqlite_grace_start() to
+	 * advance the epoch numbers, and then proceed as normal.
+	 */
+	if (recovery_epoch == 0) {
+		xlog(D_GENERAL, "%s: received gracedone upcall "
+			"while not in grace, please update the kernel",
+			__func__);
+		ret = sqlite_grace_start();
+		if (ret)
+			goto reply;
+	}
 
-	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
+	xlog(D_GENERAL, "%s: grace done.", __func__);
 
+	ret = sqlite_grace_done();
+
+reply:
 	/* set up reply: downcall with 0 status */
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
 	bsize = sizeof(*cmsg);
 
+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+	if (wsize != bsize) {
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+			 __func__, wsize);
+		ret = cld_pipe_open(clnt);
+		if (ret) {
+			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
+					__func__, ret);
+			exit(ret);
+		}
+	}
+}
+
+static int
+gracestart_callback(struct cld_client *clnt) {
+	ssize_t bsize, wsize;
+	struct cld_msg *cmsg = &clnt->cl_msg;
+
+	cmsg->cm_status = -EINPROGRESS;
+
+	bsize = sizeof(struct cld_msg);
+
+	xlog(D_GENERAL, "Sending client %.*s",
+			cmsg->cm_u.cm_name.cn_len, cmsg->cm_u.cm_name.cn_id);
+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+	if (wsize != bsize)
+		return -EIO;
+	return 0;
+}
+
+static void
+cld_gracestart(struct cld_client *clnt)
+{
+	int ret;
+	ssize_t bsize, wsize;
+	struct cld_msg *cmsg = &clnt->cl_msg;
+
+	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
+
+	ret = sqlite_grace_start();
+	if (ret)
+		goto reply;
+
+	xlog(D_GENERAL, "%s: sending client records to the kernel", __func__);
+
+	ret = sqlite_iterate_recovery(&gracestart_callback, clnt);
+
+reply:
+	/* set up reply: downcall with 0 status */
+	cmsg->cm_status = ret ? -EREMOTEIO : ret;
+
+	bsize = sizeof(struct cld_msg);
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
@@ -489,6 +617,9 @@ cldcb(int UNUSED(fd), short which, void *data)
 		break;
 	case Cld_GraceDone:
 		cld_gracedone(clnt);
+		break;
+	case Cld_GraceStart:
+		cld_gracestart(clnt);
 		break;
 	default:
 		xlog(L_WARNING, "%s: command %u is not yet implemented",
@@ -585,6 +716,9 @@ main(int argc, char **argv)
 			goto out;
 		}
 	}
+
+	if (linux_version_code() < MAKE_VERSION(4, 20, 0))
+		old_kernel = true;
 
 	/* set up storage db */
 	rc = sqlite_prepare_dbh(storagedir);

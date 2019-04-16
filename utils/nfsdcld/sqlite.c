@@ -21,17 +21,24 @@
  * Explanation:
  *
  * This file contains the code to manage the sqlite backend database for the
- * nfsdcltrack usermodehelper upcall program.
+ * nfsdcld client tracking daemon.
  *
  * The main database is called main.sqlite and contains the following tables:
  *
  * parameters: simple key/value pairs for storing database info
  *
- * clients: an "id" column containing a BLOB with the long-form clientid as
- * 	    sent by the client, a "time" column containing a timestamp (in
- * 	    epoch seconds) of when the record was last updated, and a
- * 	    "has_session" column containing a boolean value indicating
- * 	    whether the client has sessions (v4.1+) or not (v4.0).
+ * grace: a "current" column containing an INTEGER representing the current
+ *        epoch (where should new values be stored) and a "recovery" column
+ *        containing an INTEGER representing the recovery epoch (from what
+ *        epoch are we allowed to recover).  A recovery epoch of 0 means
+ *        normal operation (grace period not in force).  Note: sqlite stores
+ *        integers as signed values, so these must be cast to a uint64_t when
+ *        retrieving them from the database and back to an int64_t when storing
+ *        them in the database.
+ *
+ * rec-CCCCCCCCCCCCCCCC (where C is the hex representation of the epoch value):
+ *        a single "id" column containing a BLOB with the long-form clientid
+ *        as sent by the client.
  */
 
 #ifdef HAVE_CONFIG_H
@@ -47,16 +54,21 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <limits.h>
 #include <sqlite3.h>
 #include <linux/limits.h>
 
 #include "xlog.h"
 #include "sqlite.h"
+#include "cld.h"
+#include "cld-internal.h"
 
-#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
+#define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
 
 /* in milliseconds */
-#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+#define CLD_SQLITE_BUSY_TIMEOUT 10000
 
 /* private data structures */
 
@@ -124,7 +136,7 @@ out:
 }
 
 static int
-sqlite_maindb_update_v1_to_v2(void)
+sqlite_maindb_update_schema(int oldversion)
 {
 	int ret, ret2;
 	char *err;
@@ -142,32 +154,66 @@ sqlite_maindb_update_v1_to_v2(void)
 	 * transaction to guard against racing DB setup attempts
 	 */
 	ret = sqlite_query_schema_version();
-	switch (ret) {
-	case 1:
-		/* Still at v1 -- do conversion */
-		break;
-	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
-		/* Someone else raced in and set it up */
-		ret = 0;
-		goto rollback;
-	default:
-		/* Something went wrong -- fail! */
-		ret = -EINVAL;
+	if (ret != oldversion) {
+		if (ret == CLD_SQLITE_LATEST_SCHEMA_VERSION)
+			/* Someone else raced in and set it up */
+			ret = 0;
+		else
+			/* Something went wrong -- fail! */
+			ret = -EINVAL;
 		goto rollback;
 	}
 
-	/* create v2 clients table */
-	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
-				"has_session INTEGER;",
+	/* Still at old version -- do conversion */
+
+	/* create grace table */
+	ret = sqlite3_exec(dbh, "CREATE TABLE grace "
+				"(current INTEGER , recovery INTEGER);",
 				NULL, NULL, &err);
 	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to update clients table: %s", err);
+		xlog(L_ERROR, "Unable to create grace table: %s", err);
+		goto rollback;
+	}
+
+	/* insert initial epochs into grace table */
+	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO grace "
+				"values (1, 0);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to set initial epochs: %s", err);
+		goto rollback;
+	}
+
+	/* create recovery table for current epoch */
+	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
+				"(id BLOB PRIMARY KEY);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to create recovery table "
+				"for current epoch: %s", err);
+		goto rollback;
+	}
+
+	/* copy records from old clients table */
+	ret = sqlite3_exec(dbh, "INSERT INTO \"rec-0000000000000001\" "
+				"SELECT id FROM clients;",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to copy client records: %s", err);
+		goto rollback;
+	}
+
+	/* drop the old clients table */
+	ret = sqlite3_exec(dbh, "DROP TABLE clients;",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to drop old clients table: %s", err);
 		goto rollback;
 	}
 
 	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
 			"WHERE key = \"version\";",
-			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+			CLD_SQLITE_LATEST_SCHEMA_VERSION);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
 		goto rollback;
@@ -205,7 +251,7 @@ rollback:
  * transaction. On any error, rollback the transaction.
  */
 static int
-sqlite_maindb_init_v2(void)
+sqlite_maindb_init_v3(void)
 {
 	int ret, ret2;
 	char *err = NULL;
@@ -227,7 +273,7 @@ sqlite_maindb_init_v2(void)
 	case 0:
 		/* Query failed again -- set up DB */
 		break;
-	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
+	case CLD_SQLITE_LATEST_SCHEMA_VERSION:
 		/* Someone else raced in and set it up */
 		ret = 0;
 		goto rollback;
@@ -245,20 +291,38 @@ sqlite_maindb_init_v2(void)
 		goto rollback;
 	}
 
-	/* create the "clients" table */
-	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
-				"time INTEGER, has_session INTEGER);",
+	/* create grace table */
+	ret = sqlite3_exec(dbh, "CREATE TABLE grace "
+				"(current INTEGER , recovery INTEGER);",
 				NULL, NULL, &err);
 	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to create clients table: %s", err);
+		xlog(L_ERROR, "Unable to create grace table: %s", err);
 		goto rollback;
 	}
 
+	/* insert initial epochs into grace table */
+	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO grace "
+				"values (1, 0);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to set initial epochs: %s", err);
+		goto rollback;
+	}
+
+	/* create recovery table for current epoch */
+	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
+				"(id BLOB PRIMARY KEY);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to create recovery table "
+				"for current epoch: %s", err);
+		goto rollback;
+	}
 
 	/* insert version into parameters table */
 	ret = snprintf(buf, sizeof(buf), "INSERT OR FAIL INTO parameters "
 			"values (\"version\", \"%d\");",
-			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+			CLD_SQLITE_LATEST_SCHEMA_VERSION);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
 		goto rollback;
@@ -289,6 +353,42 @@ rollback:
 	if (ret2 != SQLITE_OK)
 		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
 	goto out;
+}
+
+static int
+sqlite_startup_query_grace(void)
+{
+	int ret;
+	uint64_t tcur;
+	uint64_t trec;
+	sqlite3_stmt *stmt = NULL;
+
+	/* prepare select query */
+	ret = sqlite3_prepare_v2(dbh, "SELECT * FROM grace;", -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(D_GENERAL, "Unable to prepare select statement: %s",
+			sqlite3_errmsg(dbh));
+		goto out;
+	}
+
+	ret = sqlite3_step(stmt);
+	if (ret != SQLITE_ROW) {
+		xlog(D_GENERAL, "Select statement execution failed: %s",
+				sqlite3_errmsg(dbh));
+		goto out;
+	}
+
+	tcur = (uint64_t)sqlite3_column_int64(stmt, 0);
+	trec = (uint64_t)sqlite3_column_int64(stmt, 1);
+
+	current_epoch = tcur;
+	recovery_epoch = trec;
+	ret = 0;
+	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+		__func__, current_epoch, recovery_epoch);
+out:
+	sqlite3_finalize(stmt);
+	return ret;
 }
 
 /* Open the database and set up the database handle for it */
@@ -322,7 +422,7 @@ sqlite_prepare_dbh(const char *topdir)
 	}
 
 	/* set busy timeout */
-	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
+	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %s",
 				sqlite3_errmsg(dbh));
@@ -331,19 +431,26 @@ sqlite_prepare_dbh(const char *topdir)
 
 	ret = sqlite_query_schema_version();
 	switch (ret) {
-	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
+	case CLD_SQLITE_LATEST_SCHEMA_VERSION:
 		/* DB is already set up. Do nothing */
 		ret = 0;
 		break;
+	case 2:
+		/* Old DB -- update to new schema */
+		ret = sqlite_maindb_update_schema(2);
+		if (ret)
+			goto out_close;
+		break;
+
 	case 1:
 		/* Old DB -- update to new schema */
-		ret = sqlite_maindb_update_v1_to_v2();
+		ret = sqlite_maindb_update_schema(1);
 		if (ret)
 			goto out_close;
 		break;
 	case 0:
 		/* Query failed -- try to set up new DB */
-		ret = sqlite_maindb_init_v2();
+		ret = sqlite_maindb_init_v3();
 		if (ret)
 			goto out_close;
 		break;
@@ -351,10 +458,12 @@ sqlite_prepare_dbh(const char *topdir)
 		/* Unknown DB version -- downgrade? Fail */
 		xlog(L_ERROR, "Unsupported database schema version! "
 			"Expected %d, got %d.",
-			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION, ret);
+			CLD_SQLITE_LATEST_SCHEMA_VERSION, ret);
 		ret = -EINVAL;
 		goto out_close;
 	}
+
+	ret = sqlite_startup_query_grace();
 
 	return ret;
 out_close:
@@ -369,20 +478,22 @@ out_close:
  * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
  */
 int
-sqlite_insert_client(const unsigned char *clname, const size_t namelen,
-			const bool has_session, const bool zerotime)
+sqlite_insert_client(const unsigned char *clname, const size_t namelen)
 {
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	if (zerotime)
-		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
-				"VALUES (?, 0, ?);", -1, &stmt, NULL);
-	else
-		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
-				"VALUES (?, strftime('%s', 'now'), ?);", -1,
-				&stmt, NULL);
+	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016lx\" "
+				"VALUES (?);", current_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return ret;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
 
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
 			__func__, sqlite3_errmsg(dbh));
@@ -393,13 +504,6 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen,
 				SQLITE_STATIC);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
-				sqlite3_errmsg(dbh));
-		goto out_err;
-	}
-
-	ret = sqlite3_bind_int(stmt, 2, (int)has_session);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "%s: bind int failed: %s", __func__,
 				sqlite3_errmsg(dbh));
 		goto out_err;
 	}
@@ -424,8 +528,18 @@ sqlite_remove_client(const unsigned char *clname, const size_t namelen)
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = sqlite3_prepare_v2(dbh, "DELETE FROM clients WHERE id==?", -1,
-				 &stmt, NULL);
+	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016lx\" "
+				"WHERE id==?;", current_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return ret;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
+
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "%s: statement prepare failed: %s",
 				__func__, sqlite3_errmsg(dbh));
@@ -459,18 +573,26 @@ out_err:
  * return an error.
  */
 int
-sqlite_check_client(const unsigned char *clname, const size_t namelen,
-			const bool has_session)
+sqlite_check_client(const unsigned char *clname, const size_t namelen)
 {
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-				      "id==?", -1, &stmt, NULL);
+	ret = snprintf(buf, sizeof(buf), "SELECT count(*) FROM  \"rec-%016lx\" "
+				"WHERE id==?;", recovery_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return ret;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
-				__func__, sqlite3_errmsg(dbh));
-		goto out_err;
+		xlog(L_ERROR, "%s: select statement prepare failed: %s",
+			__func__, sqlite3_errmsg(dbh));
+		return ret;
 	}
 
 	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
@@ -495,37 +617,10 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen,
 		goto out_err;
 	}
 
-	/* Only update timestamp for v4.0 clients */
-	if (has_session) {
-		ret = SQLITE_OK;
-		goto out_err;
-	}
-
 	sqlite3_finalize(stmt);
-	stmt = NULL;
-	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
-				      "time=strftime('%s', 'now') WHERE id==?",
-				 -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
-				__func__, sqlite3_errmsg(dbh));
-		goto out_err;
-	}
 
-	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
-				SQLITE_STATIC);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "%s: bind blob failed: %s",
-				__func__, sqlite3_errmsg(dbh));
-		goto out_err;
-	}
-
-	ret = sqlite3_step(stmt);
-	if (ret == SQLITE_DONE)
-		ret = SQLITE_OK;
-	else
-		xlog(L_ERROR, "%s: unexpected return code from update: %s",
-				__func__, sqlite3_errmsg(dbh));
+	/* Now insert the client into the table for the current epoch */
+	return sqlite_insert_client(clname, namelen);
 
 out_err:
 	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
@@ -597,5 +692,213 @@ sqlite_query_reclaiming(const time_t grace_start)
 	sqlite3_finalize(stmt);
 	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
 			"reclaim", __func__, ret);
+	return ret;
+}
+
+int
+sqlite_grace_start(void)
+{
+	int ret, ret2;
+	char *err;
+	uint64_t tcur = current_epoch;
+	uint64_t trec = recovery_epoch;
+
+	/* begin transaction */
+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+				&err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+		goto rollback;
+	}
+
+	if (trec == 0) {
+		/*
+		 * A normal grace start - update the epoch values in the grace
+		 * table and create a new table for the current reboot epoch.
+		 */
+		trec = tcur;
+		tcur++;
+
+		ret = snprintf(buf, sizeof(buf), "UPDATE grace "
+				"SET current = %ld, recovery = %ld;",
+				(int64_t)tcur, (int64_t)trec);
+		if (ret < 0) {
+			xlog(L_ERROR, "sprintf failed!");
+			goto rollback;
+		} else if ((size_t)ret >= sizeof(buf)) {
+			xlog(L_ERROR, "sprintf output too long! (%d chars)",
+				ret);
+			ret = -EINVAL;
+			goto rollback;
+		}
+
+		ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+		if (ret != SQLITE_OK) {
+			xlog(L_ERROR, "Unable to update epochs: %s", err);
+			goto rollback;
+		}
+
+		ret = snprintf(buf, sizeof(buf), "CREATE TABLE \"rec-%016lx\" "
+				"(id BLOB PRIMARY KEY);",
+				tcur);
+		if (ret < 0) {
+			xlog(L_ERROR, "sprintf failed!");
+			goto rollback;
+		} else if ((size_t)ret >= sizeof(buf)) {
+			xlog(L_ERROR, "sprintf output too long! (%d chars)",
+				ret);
+			ret = -EINVAL;
+			goto rollback;
+		}
+
+		ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+		if (ret != SQLITE_OK) {
+			xlog(L_ERROR, "Unable to create table for current epoch: %s",
+				err);
+			goto rollback;
+		}
+	} else {
+		/* Server restarted while in grace - don't update the epoch
+		 * values in the grace table, just clear out the records for
+		 * the current reboot epoch.
+		 */
+		ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016lx\";",
+				tcur);
+		if (ret < 0) {
+			xlog(L_ERROR, "sprintf failed!");
+			goto rollback;
+		} else if ((size_t)ret >= sizeof(buf)) {
+			xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+			ret = -EINVAL;
+			goto rollback;
+		}
+
+		ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+		if (ret != SQLITE_OK) {
+			xlog(L_ERROR, "Unable to clear table for current epoch: %s",
+				err);
+			goto rollback;
+		}
+	}
+
+	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+		goto rollback;
+	}
+
+	current_epoch = tcur;
+	recovery_epoch = trec;
+	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+		__func__, current_epoch, recovery_epoch);
+
+out:
+	sqlite3_free(err);
+	return ret;
+rollback:
+	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+	if (ret2 != SQLITE_OK)
+		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+	goto out;
+}
+
+int
+sqlite_grace_done(void)
+{
+	int ret, ret2;
+	char *err;
+
+	/* begin transaction */
+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+				&err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+		goto rollback;
+	}
+
+	ret = sqlite3_exec(dbh, "UPDATE grace SET recovery = \"0\";",
+			NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to clear recovery epoch: %s", err);
+		goto rollback;
+	}
+
+	ret = snprintf(buf, sizeof(buf), "DROP TABLE \"rec-%016lx\";",
+		recovery_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		goto rollback;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		ret = -EINVAL;
+		goto rollback;
+	}
+
+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to drop table for recovery epoch: %s",
+			err);
+		goto rollback;
+	}
+
+	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+		goto rollback;
+	}
+
+	recovery_epoch = 0;
+	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+		__func__, current_epoch, recovery_epoch);
+
+out:
+	sqlite3_free(err);
+	return ret;
+rollback:
+	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+	if (ret2 != SQLITE_OK)
+		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+	goto out;
+}
+
+
+int
+sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt)
+{
+	int ret;
+	sqlite3_stmt *stmt = NULL;
+	struct cld_msg *cmsg = &clnt->cl_msg;
+
+	if (recovery_epoch == 0) {
+		xlog(D_GENERAL, "%s: not in grace!", __func__);
+		return -EINVAL;
+	}
+
+	ret = snprintf(buf, sizeof(buf), "SELECT * FROM \"rec-%016lx\";",
+		recovery_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return ret;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: select statement prepare failed: %s",
+			__func__, sqlite3_errmsg(dbh));
+		return ret;
+	}
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		memcpy(&cmsg->cm_u.cm_name.cn_id, sqlite3_column_blob(stmt, 0),
+			NFS4_OPAQUE_LIMIT);
+		cmsg->cm_u.cm_name.cn_len = sqlite3_column_bytes(stmt, 0);
+		cb(clnt);
+	}
+	if (ret == SQLITE_DONE)
+		ret = 0;
+	sqlite3_finalize(stmt);
 	return ret;
 }

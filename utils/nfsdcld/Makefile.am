@@ -13,7 +13,7 @@ sbin_PROGRAMS	= nfsdcld
 nfsdcld_SOURCES = nfsdcld.c sqlite.c
 nfsdcld_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
 
-noinst_HEADERS	= sqlite.h
+noinst_HEADERS	= sqlite.h cld-internal.h
 
 MAINTAINERCLEANFILES = Makefile.in
 

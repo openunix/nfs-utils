@@ -1,6 +1,4 @@
 /*
- * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
- *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -17,19 +15,16 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef _SQLITE_H_
-#define _SQLITE_H_
+#ifndef _CLD_INTERNAL_H_
+#define _CLD_INTERNAL_H_
 
-struct cld_client;
+struct cld_client {
+	int			cl_fd;
+	struct event		cl_event;
+	struct cld_msg	cl_msg;
+};
 
-int sqlite_prepare_dbh(const char *topdir);
-int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
-int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
-int sqlite_check_client(const unsigned char *clname, const size_t namelen);
-int sqlite_remove_unreclaimed(const time_t grace_start);
-int sqlite_query_reclaiming(const time_t grace_start);
-int sqlite_grace_start(void);
-int sqlite_grace_done(void);
-int sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *clnt);
+uint64_t current_epoch;
+uint64_t recovery_epoch;
 
-#endif /* _SQLITE_H */
+#endif /* _CLD_INTERNAL_H_ */
