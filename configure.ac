@@ -245,6 +245,12 @@ else
 	AM_CONDITIONAL(MOUNT_CONFIG, [test "$enable_mount" = "yes"])
 fi
 
+AC_ARG_ENABLE(nfsdcld,
+	[AC_HELP_STRING([--disable-nfsdcld],
+			[disable NFSv4 clientid tracking daemon @<:@default=no@:>@])],
+	enable_nfsdcld=$enableval,
+	enable_nfsdcld="yes")
+
 AC_ARG_ENABLE(nfsdcltrack,
 	[AC_HELP_STRING([--disable-nfsdcltrack],
 			[disable NFSv4 clientid tracking programs @<:@default=no@:>@])],
@@ -324,6 +330,20 @@ if test "$enable_nfsv4" = yes; then
   dnl Check for sqlite3
   AC_SQLITE3_VERS
 
+  if test "$enable_nfsdcld" = "yes"; then
+	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
+		AC_MSG_ERROR([Cannot find header needed for nfsdcld]))
+
+    case $libsqlite3_cv_is_recent in
+    yes) ;;
+    unknown)
+      dnl do not fail when cross-compiling
+      AC_MSG_WARN([assuming sqlite is at least v3.3]) ;;
+    *)
+      AC_MSG_ERROR([nfsdcld requires sqlite-devel]) ;;
+    esac
+  fi
+
   if test "$enable_nfsdcltrack" = "yes"; then
 	AC_CHECK_HEADERS([libgen.h sys/inotify.h], ,
 		AC_MSG_ERROR([Cannot find header needed for nfsdcltrack]))
@@ -339,6 +359,7 @@ if test "$enable_nfsv4" = yes; then
   fi
 
 else
+  enable_nfsdcld="no"
   enable_nfsdcltrack="no"
 fi
 
@@ -349,6 +370,7 @@ if test "$enable_nfsv41" = yes; then
 fi
 
 dnl enable nfsidmap when its support by libnfsidmap
+AM_CONDITIONAL(CONFIG_NFSDCLD, [test "$enable_nfsdcld" = "yes" ])
 AM_CONDITIONAL(CONFIG_NFSDCLTRACK, [test "$enable_nfsdcltrack" = "yes" ])
 
 
@@ -627,6 +649,7 @@ AC_CONFIG_FILES([
 	tools/nfsconf/Makefile
 	utils/Makefile
 	utils/blkmapd/Makefile
+	utils/nfsdcld/Makefile
 	utils/nfsdcltrack/Makefile
 	utils/exportfs/Makefile
 	utils/gssd/Makefile
