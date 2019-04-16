@@ -46,11 +46,11 @@
 #include "sqlite.h"
 #include "../mount/version.h"
 
-#ifndef PIPEFS_DIR
-#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
+#ifndef DEFAULT_PIPEFS_DIR
+#define DEFAULT_PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
 #endif
 
-#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
+#define DEFAULT_CLD_PATH	"/nfsd/cld"
 
 #ifndef CLD_DEFAULT_STORAGEDIR
 #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcld"
@@ -63,7 +63,8 @@
 /* private data structures */
 
 /* global variables */
-static char *pipepath = DEFAULT_CLD_PATH;
+static char pipefs_dir[PATH_MAX] = DEFAULT_PIPEFS_DIR;
+static char pipepath[PATH_MAX];
 static int 		inotify_fd = -1;
 static struct event	pipedir_event;
 static bool old_kernel = false;
@@ -73,7 +74,7 @@ static struct option longopts[] =
 	{ "help", 0, NULL, 'h' },
 	{ "foreground", 0, NULL, 'F' },
 	{ "debug", 0, NULL, 'd' },
-	{ "pipe", 1, NULL, 'p' },
+	{ "pipefsdir", 1, NULL, 'p' },
 	{ "storagedir", 1, NULL, 's' },
 	{ NULL, 0, 0, 0 },
 };
@@ -84,7 +85,7 @@ static void cldcb(int UNUSED(fd), short which, void *data);
 static void
 usage(char *progname)
 {
-	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
+	printf("%s [ -hFd ] [ -p pipefsdir ] [ -s storagedir ]\n", progname);
 }
 
 static int
@@ -663,7 +664,7 @@ main(int argc, char **argv)
 			foreground = true;
 			break;
 		case 'p':
-			pipepath = optarg;
+			strlcpy(pipefs_dir, optarg, sizeof(pipefs_dir));
 			break;
 		case 's':
 			storagedir = optarg;
@@ -674,6 +675,8 @@ main(int argc, char **argv)
 		}
 	}
 
+	strlcpy(pipepath, pipefs_dir, sizeof(pipepath));
+	strlcat(pipepath, DEFAULT_CLD_PATH, sizeof(pipepath));
 
 	xlog_open(progname);
 	if (!foreground) {

@@ -155,11 +155,10 @@ Enable debug level logging.
 .IP "\fB\-F\fR, \fB\-\-foreground\fR" 4
 .IX Item "-F, --foreground"
 Runs the daemon in the foreground and prints all output to stderr
-.IP "\fB\-p\fR \fIpipe\fR, \fB\-\-pipe\fR=\fIpipe\fR" 4
-.IX Item "-p pipe, --pipe=pipe"
-Location of the \*(L"cld\*(R" upcall pipe. The default value is
-\&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
-daemon starts then it will wait for it to be created.
+.IP "\fB\-p\fR \fIpath\fR, \fB\-\-pipefsdir\fR=\fIpath\fR" 4
+.IX Item "-p path, --pipefsdir=path"
+Location of the rpc_pipefs filesystem. The default value is
+\&\fI/var/lib/nfs/rpc_pipefs\fR.
 .IP "\fB\-s\fR \fIstorage_dir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
 .IX Item "-s storagedir, --storagedir=storage_dir"
 Directory where stable storage information should be kept. The default
