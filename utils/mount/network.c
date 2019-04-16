@@ -1062,7 +1062,7 @@ int clnt_ping(struct sockaddr_in *saddr, const unsigned long prog,
 	if (caddr) {
 		/* Get the address of our end of this connection */
 		socklen_t len = sizeof(*caddr);
-		if (getsockname(sock, caddr, &len) != 0)
+		if (getsockname(sock, (struct sockaddr *) caddr, &len) != 0)
 			caddr->sin_family = 0;
 	}
 
