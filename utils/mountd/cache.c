@@ -1240,7 +1240,7 @@ static struct exportent *lookup_junction(char *dom, const char *pathname,
 		goto out;
 	}
 	status = nfs_get_basic_junction(pathname, &locations);
-	switch (status) {
+	if (status) {
 		xlog(L_WARNING, "Dangling junction %s: %s",
 			pathname, strerror(status));
 		goto out;
@@ -1248,10 +1248,11 @@ static struct exportent *lookup_junction(char *dom, const char *pathname,
 
 	parent = lookup_parent_export(dom, pathname, ai);
 	if (parent == NULL)
-		goto out;
+		goto free_locations;
 
 	exp = locations_to_export(locations, pathname, parent);
 
+free_locations:
 	nfs_free_locations(locations->ns_list);
 	free(locations);
 
