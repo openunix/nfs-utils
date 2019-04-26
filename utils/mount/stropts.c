@@ -983,8 +983,11 @@ static int nfs_try_mount(struct nfsmount_info *mi)
 		}
 
 		if (!nfs_append_addr_option(address->ai_addr,
-					    address->ai_addrlen, mi->options))
+					    address->ai_addrlen, mi->options)) {
+			nfs_freeaddrinfo(address);
+			errno = ENOMEM;
 			return 0;
+		}
 		mi->address = address;
 	}
 
