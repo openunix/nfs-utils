@@ -699,6 +699,8 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
 				 "we failed to unparse principal name: %s\n",
 				 k5err);
 			k5_free_kt_entry(context, kte);
+			free(k5err);
+			k5err = NULL;
 			continue;
 		}
 		printerr(4, "Processing keytab entry for principal '%s'\n",
@@ -900,6 +902,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 				k5err = gssd_k5_err_msg(context, code);
 				printerr(1, "%s while building principal for '%s'\n",
 					 k5err, spn);
+				free(k5err);
+				k5err = NULL;
 				continue;
 			}
 			code = krb5_kt_get_entry(context, kt, princ, 0, 0, kte);
@@ -1169,7 +1173,8 @@ gssd_get_krb5_machine_cred_list(char ***list)
 		*list = l;
 		retval = 0;
 		goto out;
-	}
+	} else
+		free((void *)l);
   out:
 	return retval;
 }
@@ -1217,6 +1222,8 @@ gssd_destroy_krb5_machine_creds(void)
 			printerr(0, "WARNING: %s while resolving credential "
 				    "cache '%s' for destruction\n", k5err,
 				    ple->ccname);
+			free(k5err);
+			k5err = NULL;
 			continue;
 		}
 
