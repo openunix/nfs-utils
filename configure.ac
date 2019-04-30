@@ -592,6 +592,7 @@ my_am_cflags="\
  -Werror=parentheses \
  -Werror=aggregate-return \
  -Werror=unused-result \
+ -Wno-cast-function-type \
  -fno-strict-aliasing \
 "
 
