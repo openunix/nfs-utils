@@ -51,6 +51,7 @@
 #include <syslog.h>
 #include <libgen.h>
 #include <sys/file.h>
+#include <time.h>
 
 #include "conffile.h"
 #include "xlog.h"
@@ -112,6 +113,8 @@ struct conf_binding {
 };
 
 LIST_HEAD (conf_bindings, conf_binding) conf_bindings[256];
+
+const char *modified_by = NULL;
 
 static __inline__ uint8_t
 conf_hash(const char *s)
@@ -1397,6 +1400,52 @@ make_section(const char *section, const char *arg)
 	return line;
 }
 
+/* compose a comment line (with or without tag) */
+static char *
+make_comment(const char *tag, const char *comment)
+{
+	char *line;
+	int ret;
+
+	if (tag == NULL || *tag == '\0') {
+		ret = asprintf(&line, "# %s\n", comment);
+	} else {
+		ret = asprintf(&line, "# %s: %s\n", tag, comment);
+	}
+
+	if (ret == -1) {
+		xlog(L_ERROR, "malloc error composing header");
+		return NULL;
+	}
+
+	return line;
+}
+		
+/* compose a 'file modified' comment */
+static char *
+make_timestamp(const char *tag, time_t when)
+{
+	struct tm *tstamp;
+	char datestr[80];
+	char *result = NULL;
+
+	tstamp = localtime(&when);
+	if (strftime(datestr, sizeof(datestr), "%b %d %Y %H:%M:%S", tstamp) == 0) {
+		xlog(L_ERROR, "error composing date");
+		datestr[0] = '\0';
+	}
+
+	if (modified_by) {
+		char *tmpstr = NULL;
+		asprintf(&tmpstr, "%s on %s", modified_by, datestr);
+		result = make_comment(tag, tmpstr);
+		free(tmpstr);
+	} else {
+		result = make_comment(tag, datestr);
+	}
+	return result;
+}
+
 /* does the supplied line contain the named section header */
 static bool
 is_section(const char *line, const char *section, const char *arg)
@@ -1405,6 +1454,10 @@ is_section(const char *line, const char *section, const char *arg)
 	char *name;
 	char *sub;
 	bool found = false;
+
+	/* Not a valid section name  */
+	if (strcmp(section, "#") == 0)
+		return false;
 
 	/* skip leading white space */
 	while (*line == '[' || isspace(*line))
@@ -1568,6 +1621,54 @@ is_comment(const char *line)
 
 	return false;
 }
+
+/* check that line contains the specified comment header */
+static bool
+is_taggedcomment(const char *line, const char *field)
+{
+	char *end;
+	char *name;
+	bool found = false;
+
+	if (line == NULL)
+		return false;
+
+	while (isblank(*line))
+		line++;
+
+	if (*line != '#')
+		return false;
+
+	line++;
+
+	/* quick check, is this even a likely formatted line */
+	end = strchr(line, ':');
+	if (end == NULL)
+		return false;
+
+	/* skip leading white space before field name */
+	while (isblank(*line))
+		line++;
+
+	name = strdup(line);
+	if (name == NULL) {
+		xlog_warn("conf_write: malloc failed");
+		return false;
+	}
+
+	/* strip trailing spaces from the name */
+	end = strchr(name, ':');
+	if (end) *(end--) = 0;
+	while (end && end > name && isblank(*end))
+		*(end--)=0;
+
+	if (strcasecmp(name, field)==0) 
+		found = true;
+
+	free(name);
+	return found;
+}
+
 
 /* delete a buffer queue whilst optionally outputting to file */
 static int
@@ -1772,6 +1873,7 @@ conf_write(const char *filename, const char *section, const char *arg,
 	struct tailhead inqueue;
 	char * buff = NULL;
 	int buffsize = 0;
+	time_t now = time(NULL);
 
 	TAILQ_INIT(&inqueue);
 	TAILQ_INIT(&outqueue);
@@ -1804,12 +1906,81 @@ conf_write(const char *filename, const char *section, const char *arg,
 		if (lock_file(infile))
 			goto cleanup;
 
-		if (append_line(&inqueue, NULL, make_section(section, arg)))
+		if (strcmp(section, "#") == 0) {
+			if (append_line(&inqueue, NULL, make_comment(tag, value)))
+				goto cleanup;
+		} else {
+			if (append_line(&inqueue, NULL, make_section(section, arg)))
+				goto cleanup;
+
+			if (append_line(&inqueue, NULL, make_tagline(tag, value)))
+				goto cleanup;
+		}
+
+		append_queue(&inqueue, &outqueue);
+	} else 
+	if (strcmp(section, "#") == 0) {
+		/* Adding a comment line */
+		struct outbuffer *where = NULL;
+		struct outbuffer *next = NULL;
+		bool found = false;
+		int err = 0;
+
+		if (lock_file(infile))
 			goto cleanup;
 
-		if (append_line(&inqueue, NULL, make_tagline(tag, value)))
+		buffsize = 4096;
+		buff = calloc(1, buffsize);
+		if (buff == NULL) {
+			xlog(L_ERROR, "malloc error for read buffer");
 			goto cleanup;
+		}
+		buff[0] = '\0';
 
+		/* read in the file */
+		do {
+			if (*buff != '\0' 
+			&& !is_taggedcomment(buff, "Modified")) {
+				if (append_line(&inqueue, NULL, strdup(buff)))
+					goto cleanup;
+			}
+
+			err = read_line(&buff, &buffsize, infile);
+		} while (err == 0);
+
+		/* if a tagged comment, look for an existing instance */
+		if (tag && *tag != '\0') {
+			where = TAILQ_FIRST(&inqueue);
+			while (where != NULL) {
+				next = TAILQ_NEXT(where, link);
+				struct outbuffer *prev = TAILQ_PREV(where, tailhead, link);
+				if (is_taggedcomment(where->text, tag)) {
+					TAILQ_REMOVE(&inqueue, where, link);
+					free(where->text);
+					free(where);
+					found = true;
+					if (append_line(&inqueue, prev, make_comment(tag, value)))
+						goto cleanup;
+				}
+				where = next;
+			}
+		}
+		/* it wasn't tagged or we didn't find it */
+		if (!found) {
+			/* does the file end in a blank line or a comment */
+			if (!TAILQ_EMPTY(&inqueue)) {
+				struct outbuffer *tail = TAILQ_LAST(&inqueue, tailhead);
+				if (tail && !is_empty(tail->text) && !is_comment(tail->text)) {
+					/* no, so add one for clarity */
+					if (append_line(&inqueue, NULL, strdup("\n")))
+						goto cleanup;
+				}
+			}
+			/* add the new comment line */
+			if (append_line(&inqueue, NULL, make_comment(tag, value)))
+				goto cleanup;
+		}
+		/* move everything over to the outqueue for writing */
 		append_queue(&inqueue, &outqueue);
 	} else {
 		bool found = false;
@@ -1831,7 +2002,8 @@ conf_write(const char *filename, const char *section, const char *arg,
 
 			/* read in one section worth of lines */
 			do {
-				if (*buff != '\0') {
+				if (*buff != '\0' 
+				&& !is_taggedcomment(buff, "Modified")) {
 					if (append_line(&inqueue, NULL, strdup(buff)))
 						goto cleanup;
 				}
@@ -1948,6 +2120,23 @@ conf_write(const char *filename, const char *section, const char *arg,
 			/* we are done with this section, move it to the out queue */
 			append_queue(&inqueue, &outqueue);
 		} while(err == 0);
+	}
+
+	if (modified_by) {
+		/* check for and update the Modified header */
+		/* does the file end in a blank line or a comment */
+		if (!TAILQ_EMPTY(&outqueue)) {
+			struct outbuffer *tail = TAILQ_LAST(&outqueue, tailhead);
+			if (tail && !is_empty(tail->text) && !is_comment(tail->text)) {
+				/* no, so add one for clarity */
+				if (append_line(&outqueue, NULL, strdup("\n")))
+					goto cleanup;
+			}
+		}
+
+		/* now append the modified date comment */
+		if (append_line(&outqueue, NULL, make_timestamp("Modified", now)))
+			goto cleanup;
 	}
 
 	/* now rewind and overwrite the file with the updated data */
