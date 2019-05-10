@@ -1427,7 +1427,8 @@ make_timestamp(const char *tag, time_t when)
 {
 	struct tm *tstamp;
 	char datestr[80];
-	char *result = NULL;
+	char *result = NULL, *tmpstr = NULL;
+	int ret;
 
 	tstamp = localtime(&when);
 	if (strftime(datestr, sizeof(datestr), "%b %d %Y %H:%M:%S", tstamp) == 0) {
@@ -1436,8 +1437,11 @@ make_timestamp(const char *tag, time_t when)
 	}
 
 	if (modified_by) {
-		char *tmpstr = NULL;
-		asprintf(&tmpstr, "%s on %s", modified_by, datestr);
+		ret = asprintf(&tmpstr, "%s on %s", modified_by, datestr);
+		if (ret == -1) {
+			xlog(L_ERROR, "malloc error composing a time stamp");
+			return NULL;
+		}
 		result = make_comment(tag, tmpstr);
 		free(tmpstr);
 	} else {
