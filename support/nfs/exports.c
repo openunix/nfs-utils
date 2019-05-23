@@ -179,9 +179,20 @@ getexportent(int fromkernel, int fromexports)
 	}
 	ee.e_hostname = xstrdup(hostname);
 
-	if (parseopts(opt, &ee, fromexports && !has_default_subtree_opts, NULL) < 0)
-		return NULL;
+	if (parseopts(opt, &ee, fromexports && !has_default_subtree_opts, NULL) < 0) {
+                if(ee.e_hostname)
+                {
+                    xfree(ee.e_hostname);
+                    ee.e_hostname=NULL;
+                }
+                if(ee.e_uuid)
+                {
+                    xfree(ee.e_uuid);
+                    ee.e_uuid=NULL;
+                }
 
+		return NULL;
+        }
 	/* resolve symlinks */
 	if (realpath(ee.e_path, rpath) != NULL) {
 		rpath[sizeof (rpath) - 1] = '\0';
