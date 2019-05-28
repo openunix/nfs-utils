@@ -836,8 +836,6 @@ main(int argc, char **argv)
 	if (!foreground)
 		closeall(3);
 
-	cache_open();
-
 	unregister_services();
 	if (version2()) {
 		listeners += nfs_svc_create("mountd", MOUNTPROG,
@@ -887,6 +885,9 @@ main(int argc, char **argv)
 
 	if (num_threads > 1)
 		fork_workers();
+
+	/* Open files now to avoid sharing descriptors among forked processes */
+	cache_open();
 
 	xlog(L_NOTICE, "Version " VERSION " starting");
 	my_svc_run();
