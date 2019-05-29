@@ -166,3 +166,87 @@ nfsd_path_lstat(const char *pathname, struct stat *statbuf)
 		return xlstat(pathname, statbuf);
 	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
 }
+
+struct nfsd_read_data {
+	int fd;
+	char *buf;
+	size_t len;
+	ssize_t ret;
+	int err;
+};
+
+static void
+nfsd_readfunc(void *data)
+{
+	struct nfsd_read_data *d = data;
+
+	d->ret = read(d->fd, d->buf, d->len);
+	if (d->ret < 0)
+		d->err = errno;
+}
+
+static ssize_t
+nfsd_run_read(struct xthread_workqueue *wq, int fd, char *buf, size_t len)
+{
+	struct nfsd_read_data data = {
+		fd,
+		buf,
+		len,
+		0,
+		0
+	};
+	xthread_work_run_sync(wq, nfsd_readfunc, &data);
+	if (data.ret < 0)
+		errno = data.err;
+	return data.ret;
+}
+
+ssize_t
+nfsd_path_read(int fd, char *buf, size_t len)
+{
+	if (!nfsd_wq)
+		return read(fd, buf, len);
+	return nfsd_run_read(nfsd_wq, fd, buf, len);
+}
+
+struct nfsd_write_data {
+	int fd;
+	const char *buf;
+	size_t len;
+	ssize_t ret;
+	int err;
+};
+
+static void
+nfsd_writefunc(void *data)
+{
+	struct nfsd_write_data *d = data;
+
+	d->ret = write(d->fd, d->buf, d->len);
+	if (d->ret < 0)
+		d->err = errno;
+}
+
+static ssize_t
+nfsd_run_write(struct xthread_workqueue *wq, int fd, const char *buf, size_t len)
+{
+	struct nfsd_write_data data = {
+		fd,
+		buf,
+		len,
+		0,
+		0
+	};
+	xthread_work_run_sync(wq, nfsd_writefunc, &data);
+	if (data.ret < 0)
+		errno = data.err;
+	return data.ret;
+}
+
+ssize_t
+nfsd_path_write(int fd, const char *buf, size_t len)
+{
+	if (!nfsd_wq)
+		return write(fd, buf, len);
+	return nfsd_run_write(nfsd_wq, fd, buf, len);
+}

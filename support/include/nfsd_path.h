@@ -13,4 +13,7 @@ char *		nfsd_path_prepend_dir(const char *dir, const char *pathname);
 int 		nfsd_path_stat(const char *pathname, struct stat *statbuf);
 int 		nfsd_path_lstat(const char *pathname, struct stat *statbuf);
 
+ssize_t		nfsd_path_read(int fd, char *buf, size_t len);
+ssize_t		nfsd_path_write(int fd, const char *buf, size_t len);
+
 #endif
