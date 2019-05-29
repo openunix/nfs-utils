@@ -29,6 +29,7 @@
 #include "mountd.h"
 #include "rpcmisc.h"
 #include "pseudoflavors.h"
+#include "nfsd_path.h"
 #include "nfslib.h"
 
 extern void my_svc_run(void);
@@ -374,7 +375,7 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
 	exp = auth_authenticate("pathconf", sap, p);
 	if (exp == NULL)
 		return 1;
-	else if (stat(p, &stb) < 0) {
+	else if (nfsd_path_stat(p, &stb) < 0) {
 		xlog(L_WARNING, "can't stat exported dir %s: %s",
 				p, strerror(errno));
 		return 1;
@@ -483,7 +484,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
 		*error = MNT3ERR_ACCES;
 		return NULL;
 	}
-	if (stat(p, &stb) < 0) {
+	if (nfsd_path_stat(p, &stb) < 0) {
 		xlog(L_WARNING, "can't stat exported dir %s: %s",
 				p, strerror(errno));
 		if (errno == ENOENT)
@@ -497,7 +498,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
 		*error = MNT3ERR_NOTDIR;
 		return NULL;
 	}
-	if (stat(exp->m_export.e_path, &estb) < 0) {
+	if (nfsd_path_stat(exp->m_export.e_path, &estb) < 0) {
 		xlog(L_WARNING, "can't stat export point %s: %s",
 		     p, strerror(errno));
 		*error = MNT3ERR_NOENT;
@@ -511,9 +512,10 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
 		return NULL;
 	}
 	if (exp->m_export.e_mountpoint &&
-		   !is_mountpoint(exp->m_export.e_mountpoint[0]?
+		   !check_is_mountpoint(exp->m_export.e_mountpoint[0]?
 				  exp->m_export.e_mountpoint:
-				  exp->m_export.e_path)) {
+				  exp->m_export.e_path,
+				  nfsd_path_lstat)) {
 		xlog(L_WARNING, "request to export an unmounted filesystem: %s",
 		     p);
 		*error = MNT3ERR_NOENT;
@@ -886,6 +888,7 @@ main(int argc, char **argv)
 	if (num_threads > 1)
 		fork_workers();
 
+	nfsd_path_init();
 	/* Open files now to avoid sharing descriptors among forked processes */
 	cache_open();
 
