@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -167,6 +168,40 @@ nfsd_path_lstat(const char *pathname, struct stat *statbuf)
 	if (!nfsd_wq)
 		return xlstat(pathname, statbuf);
 	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
+}
+
+struct nfsd_realpath_data {
+	const char *pathname;
+	char *resolved;
+	int err;
+};
+
+static void
+nfsd_realpathfunc(void *data)
+{
+	struct nfsd_realpath_data *d = data;
+
+	d->resolved = realpath(d->pathname, d->resolved);
+	if (!d->resolved)
+		d->err = errno;
+}
+
+char *
+nfsd_realpath(const char *path, char *resolved_path)
+{
+	struct nfsd_realpath_data data = {
+		path,
+		resolved_path,
+		0
+	};
+
+	if (!nfsd_wq)
+		return realpath(path, resolved_path);
+
+	xthread_work_run_sync(nfsd_wq, nfsd_realpathfunc, &data);
+	if (!data.resolved)
+		errno = data.err;
+	return data.resolved;
 }
 
 struct nfsd_read_data {
