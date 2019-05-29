@@ -272,7 +272,7 @@ mount_umnt_1_svc(struct svc_req *rqstp, dirpath *argp, void *UNUSED(resp))
 	if (*p == '\0')
 		p = "/";
 
-	if (realpath(p, rpath) != NULL) {
+	if (nfsd_realpath(p, rpath) != NULL) {
 		rpath[sizeof (rpath) - 1] = '\0';
 		p = rpath;
 	}
@@ -363,7 +363,7 @@ mount_pathconf_2_svc(struct svc_req *rqstp, dirpath *path, ppathcnf *res)
 	auth_reload();
 
 	/* Resolve symlinks */
-	if (realpath(p, rpath) != NULL) {
+	if (nfsd_realpath(p, rpath) != NULL) {
 		rpath[sizeof (rpath) - 1] = '\0';
 		p = rpath;
 	}
@@ -473,7 +473,7 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
 	auth_reload();
 
 	/* Resolve symlinks */
-	if (realpath(p, rpath) != NULL) {
+	if (nfsd_realpath(p, rpath) != NULL) {
 		rpath[sizeof (rpath) - 1] = '\0';
 		p = rpath;
 	}
