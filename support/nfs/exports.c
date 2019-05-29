@@ -155,6 +155,7 @@ getexportent(int fromkernel, int fromexports)
 	}
 
 	xfree(ee.e_hostname);
+	xfree(ee.e_realpath);
 	ee = def_ee;
 
 	/* Check for default client */
@@ -369,6 +370,7 @@ dupexportent(struct exportent *dst, struct exportent *src)
 	if (src->e_uuid)
 		dst->e_uuid = strdup(src->e_uuid);
 	dst->e_hostname = NULL;
+	dst->e_realpath = NULL;
 }
 
 struct exportent *
@@ -380,6 +382,8 @@ mkexportent(char *hname, char *path, char *options)
 
 	xfree(ee.e_hostname);
 	ee.e_hostname = xstrdup(hname);
+	xfree(ee.e_realpath);
+	ee.e_realpath = NULL;
 
 	if (strlen(path) >= sizeof(ee.e_path)) {
 		xlog(L_ERROR, "path name %s too long", path);

@@ -20,6 +20,7 @@
 #include "xmalloc.h"
 #include "nfslib.h"
 #include "exportfs.h"
+#include "nfsd_path.h"
 
 exp_hash_table exportlist[MCL_MAXTYPES] = {{NULL, {{NULL,NULL}, }}, }; 
 static int export_hash(char *);
@@ -30,6 +31,28 @@ static void	export_add(nfs_export *exp);
 static int	export_check(const nfs_export *exp, const struct addrinfo *ai,
 				const char *path);
 
+/* Return a real path for the export. */
+static void
+exportent_mkrealpath(struct exportent *eep)
+{
+	const char *chroot = nfsd_path_nfsd_rootdir();
+	char *ret = NULL;
+
+	if (chroot)
+		ret = nfsd_path_prepend_dir(chroot, eep->e_path);
+	if (!ret)
+		ret = xstrdup(eep->e_path);
+	eep->e_realpath = ret;
+}
+
+char *
+exportent_realpath(struct exportent *eep)
+{
+	if (!eep->e_realpath)
+		exportent_mkrealpath(eep);
+	return eep->e_realpath;
+}
+
 void
 exportent_release(struct exportent *eep)
 {
@@ -39,6 +62,7 @@ exportent_release(struct exportent *eep)
 	free(eep->e_fslocdata);
 	free(eep->e_uuid);
 	xfree(eep->e_hostname);
+	xfree(eep->e_realpath);
 }
 
 static void

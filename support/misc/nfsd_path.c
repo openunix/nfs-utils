@@ -81,9 +81,11 @@ nfsd_path_prepend_dir(const char *dir, const char *pathname)
 		dirlen--;
 	if (!dirlen)
 		return NULL;
+	while (pathname[0] == '/')
+		pathname++;
 	len = dirlen + strlen(pathname) + 1;
 	ret = xmalloc(len + 1);
-	snprintf(ret, len, "%.*s/%s", (int)dirlen, dir, pathname);
+	snprintf(ret, len+1, "%.*s/%s", (int)dirlen, dir, pathname);
 	return ret;
 }
 
