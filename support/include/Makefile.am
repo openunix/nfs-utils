@@ -19,6 +19,7 @@ noinst_HEADERS = \
 	sockaddr.h \
 	tcpwrapper.h \
 	v4root.h \
+	workqueue.h \
 	xio.h \
 	xlog.h \
 	xmalloc.h \
