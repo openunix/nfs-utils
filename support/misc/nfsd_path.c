@@ -1,0 +1,168 @@
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "config.h"
+#include "conffile.h"
+#include "xmalloc.h"
+#include "xlog.h"
+#include "xstat.h"
+#include "nfsd_path.h"
+#include "workqueue.h"
+
+static struct xthread_workqueue *nfsd_wq;
+
+static int
+nfsd_path_isslash(const char *path)
+{
+	return path[0] == '/' && path[1] == '/';
+}
+
+static int
+nfsd_path_isdot(const char *path)
+{
+	return path[0] == '.' && path[1] == '/';
+}
+
+static const char *
+nfsd_path_strip(const char *path)
+{
+	if (!path || *path == '\0')
+		goto out;
+	for (;;) {
+		if (nfsd_path_isslash(path)) {
+			path++;
+			continue;
+		}
+		if (nfsd_path_isdot(path)) {
+			path += 2;
+			continue;
+		}
+		break;
+	}
+out:
+	return path;
+}
+
+const char *
+nfsd_path_nfsd_rootdir(void)
+{
+	const char *rootdir;
+
+	rootdir = nfsd_path_strip(conf_get_str("exports", "rootdir"));
+	if (!rootdir || rootdir[0] ==  '\0')
+		return NULL;
+	if (rootdir[0] == '/' && rootdir[1] == '\0')
+		return NULL;
+	return rootdir;
+}
+
+char *
+nfsd_path_strip_root(char *pathname)
+{
+	const char *dir = nfsd_path_nfsd_rootdir();
+	char *ret;
+
+	ret = strstr(pathname, dir);
+	if (!ret || ret != pathname)
+		return pathname;
+	return pathname + strlen(dir);
+}
+
+char *
+nfsd_path_prepend_dir(const char *dir, const char *pathname)
+{
+	size_t len, dirlen;
+	char *ret;
+
+	dirlen = strlen(dir);
+	while (dirlen > 0 && dir[dirlen - 1] == '/')
+		dirlen--;
+	if (!dirlen)
+		return NULL;
+	len = dirlen + strlen(pathname) + 1;
+	ret = xmalloc(len + 1);
+	snprintf(ret, len, "%.*s/%s", (int)dirlen, dir, pathname);
+	return ret;
+}
+
+static void
+nfsd_setup_workqueue(void)
+{
+	const char *rootdir = nfsd_path_nfsd_rootdir();
+
+	if (!rootdir)
+		return;
+	nfsd_wq = xthread_workqueue_alloc();
+	if (!nfsd_wq)
+		return;
+	xthread_workqueue_chroot(nfsd_wq, rootdir);
+}
+
+void
+nfsd_path_init(void)
+{
+	nfsd_setup_workqueue();
+}
+
+struct nfsd_stat_data {
+	const char *pathname;
+	struct stat *statbuf;
+	int ret;
+	int err;
+};
+
+static void
+nfsd_statfunc(void *data)
+{
+	struct nfsd_stat_data *d = data;
+
+	d->ret = xstat(d->pathname, d->statbuf);
+	if (d->ret < 0)
+		d->err = errno;
+}
+
+static void
+nfsd_lstatfunc(void *data)
+{
+	struct nfsd_stat_data *d = data;
+
+	d->ret = xlstat(d->pathname, d->statbuf);
+	if (d->ret < 0)
+		d->err = errno;
+}
+
+static int
+nfsd_run_stat(struct xthread_workqueue *wq,
+		void (*func)(void *),
+		const char *pathname,
+		struct stat *statbuf)
+{
+	struct nfsd_stat_data data = {
+		pathname,
+		statbuf,
+		0,
+		0
+	};
+	xthread_work_run_sync(wq, func, &data);
+	if (data.ret < 0)
+		errno = data.err;
+	return data.ret;
+}
+
+int
+nfsd_path_stat(const char *pathname, struct stat *statbuf)
+{
+	if (!nfsd_wq)
+		return xstat(pathname, statbuf);
+	return nfsd_run_stat(nfsd_wq, nfsd_statfunc, pathname, statbuf);
+}
+
+int
+nfsd_path_lstat(const char *pathname, struct stat *statbuf)
+{
+	if (!nfsd_wq)
+		return xlstat(pathname, statbuf);
+	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
+}
