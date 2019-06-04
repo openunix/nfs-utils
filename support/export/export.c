@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/param.h>
 #include <netinet/in.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <dirent.h>
 #include <errno.h>
@@ -21,6 +22,7 @@
 #include "nfslib.h"
 #include "exportfs.h"
 #include "nfsd_path.h"
+#include "xlog.h"
 
 exp_hash_table exportlist[MCL_MAXTYPES] = {{NULL, {{NULL,NULL}, }}, }; 
 static int export_hash(char *);
@@ -38,8 +40,14 @@ exportent_mkrealpath(struct exportent *eep)
 	const char *chroot = nfsd_path_nfsd_rootdir();
 	char *ret = NULL;
 
-	if (chroot)
-		ret = nfsd_path_prepend_dir(chroot, eep->e_path);
+	if (chroot) {
+		char buffer[PATH_MAX];
+		if (realpath(chroot, buffer))
+			ret = nfsd_path_prepend_dir(buffer, eep->e_path);
+		else
+			xlog(D_GENERAL, "%s: failed to resolve path %s: %m",
+					__func__, chroot);
+	}
 	if (!ret)
 		ret = xstrdup(eep->e_path);
 	eep->e_realpath = ret;
