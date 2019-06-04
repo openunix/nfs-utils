@@ -188,7 +188,7 @@ static void xthread_workqueue_do_chroot(void *data)
 		return;
 	}
 	if (chroot(path) != 0)
-		xlog_err("chroot() failed: %m");
+		xlog_err("chroot(%s) failed: %m", path);
 }
 
 void xthread_workqueue_chroot(struct xthread_workqueue *wq,
