@@ -400,7 +400,7 @@ static char *next_mnt(void **v, char *p)
 	while ((me = getmntent(f)) != NULL && l > 1) {
 		mnt_dir = nfsd_path_strip_root(me->mnt_dir);
 
-		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] != '/')
+		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] == '/')
 			return mnt_dir;
 	}
 	endmntent(f);
