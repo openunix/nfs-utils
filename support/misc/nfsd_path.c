@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -62,13 +63,19 @@ nfsd_path_nfsd_rootdir(void)
 char *
 nfsd_path_strip_root(char *pathname)
 {
+	char buffer[PATH_MAX];
 	const char *dir = nfsd_path_nfsd_rootdir();
-	char *ret;
 
-	ret = strstr(pathname, dir);
-	if (!ret || ret != pathname)
-		return pathname;
-	return pathname + strlen(dir);
+	if (!dir)
+		goto out;
+
+	if (realpath(dir, buffer))
+		return strstr(pathname, buffer) == pathname ?
+			pathname + strlen(buffer) : NULL;
+
+	xlog(D_GENERAL, "%s: failed to resolve path %s: %m", __func__, dir);
+out:
+	return pathname;
 }
 
 char *

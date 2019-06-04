@@ -390,7 +390,6 @@ static char *next_mnt(void **v, char *p)
 	FILE *f;
 	struct mntent *me;
 	size_t l = strlen(p);
-	char *mnt_dir = NULL;
 
 	if (*v == NULL) {
 		f = setmntent("/etc/mtab", "r");
@@ -398,7 +397,10 @@ static char *next_mnt(void **v, char *p)
 	} else
 		f = *v;
 	while ((me = getmntent(f)) != NULL && l > 1) {
-		mnt_dir = nfsd_path_strip_root(me->mnt_dir);
+		char *mnt_dir = nfsd_path_strip_root(me->mnt_dir);
+
+		if (!mnt_dir)
+			continue;
 
 		if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] == '/')
 			return mnt_dir;
