@@ -67,6 +67,7 @@
 #include "cld-internal.h"
 #include "conffile.h"
 #include "legacy.h"
+#include "nfslib.h"
 
 #define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
 #define CLTRACK_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
@@ -448,6 +449,129 @@ out:
 	return ret;
 }
 
+/*
+ * Helper for renaming a recovery table to fix the padding.
+ */
+static int
+sqlite_fix_table_name(const char *name)
+{
+	int ret;
+	uint64_t val;
+	char *err;
+
+	if (sscanf(name, "rec-%" PRIx64, &val) != 1)
+		return -EINVAL;
+	ret = snprintf(buf, sizeof(buf), "ALTER TABLE \"%s\" "
+			"RENAME TO \"rec-%016" PRIx64 "\";",
+			name, val);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return -EINVAL;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to fix table for epoch %d: %s",
+		     val, err);
+		goto out;
+	}
+	xlog(D_GENERAL, "Renamed table %s to rec-%016" PRIx64, name, val);
+out:
+	sqlite3_free(err);
+	return ret;
+}
+
+/*
+ * Callback for the sqlite_exec statement in sqlite_check_table_names.
+ * If the epoch encoded in the table name matches either the current
+ * epoch or the recovery epoch, then try to fix the padding.  Otherwise,
+ * we bail.
+ */
+static int
+sqlite_check_table_names_cb(void *UNUSED(arg), int ncols, char **cols,
+			    char **UNUSED(colnames))
+{
+	int ret = SQLITE_OK;
+	uint64_t val;
+
+	if (ncols > 1)
+		return -EINVAL;
+	if (sscanf(cols[0], "rec-%" PRIx64, &val) != 1)
+		return -EINVAL;
+	if (val == current_epoch || val == recovery_epoch) {
+		xlog(D_GENERAL, "found invalid table name %s for %s epoch",
+		     cols[0], val == current_epoch ? "current" : "recovery");
+		ret = sqlite_fix_table_name(cols[0]);
+	} else {
+		xlog(L_ERROR, "found invalid table name %s for unknown epoch %"
+		     PRId64, cols[0], val);
+		return -EINVAL;
+	}
+	return ret;
+}
+
+/*
+ * Look for recovery table names where the epoch isn't zero-padded
+ */
+static int
+sqlite_check_table_names(void)
+{
+	int ret;
+	char *err;
+
+	ret = sqlite3_exec(dbh, "SELECT name FROM sqlite_master "
+			   "WHERE type=\"table\" AND name LIKE \"%rec-%\" "
+			   "AND length(name) < 20;",
+			   sqlite_check_table_names_cb, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Table names check failed: %s", err);
+	}
+	sqlite3_free(err);
+	return ret;
+}
+
+/*
+ * Simple db health check.  For now we're just making sure that the recovery
+ * table names are of the format "rec-CCCCCCCCCCCCCCCC" (where C is the hex
+ * representation of the epoch value) and that epoch value matches either
+ * the current epoch or the recovery epoch.
+ */
+static int
+sqlite_check_db_health(void)
+{
+	int ret, ret2;
+	char *err;
+
+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+				&err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+		goto rollback;
+	}
+
+	ret = sqlite_check_table_names();
+	if (ret != SQLITE_OK)
+		goto rollback;
+
+	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+		goto rollback;
+	}
+
+cleanup:
+	sqlite3_free(err);
+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+	return ret;
+rollback:
+	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+	if (ret2 != SQLITE_OK)
+		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+	goto cleanup;
+}
+
 static int
 sqlite_attach_db(const char *path)
 {
@@ -672,6 +796,13 @@ sqlite_prepare_dbh(const char *topdir)
 	ret = sqlite_query_first_time(&first_time);
 	if (ret)
 		goto out_close;
+
+	ret = sqlite_check_db_health();
+	if (ret) {
+		xlog(L_ERROR, "Database health check failed! "
+			"Database must be fixed manually.");
+		goto out_close;
+	}
 
 	/* one-time "upgrade" from older client tracking methods */
 	if (first_time) {
