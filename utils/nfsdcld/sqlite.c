@@ -536,7 +536,7 @@ sqlite_copy_cltrack_records(int *num_rec)
 		xlog(L_ERROR, "Unable to begin transaction: %s", err);
 		goto rollback;
 	}
-	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%" PRIx64 "\";",
+	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016" PRIx64 "\";",
 			current_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -551,7 +551,7 @@ sqlite_copy_cltrack_records(int *num_rec)
 		xlog(L_ERROR, "Unable to clear records from current epoch: %s", err);
 		goto rollback;
 	}
-	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016" PRIx64 "\" "
 				"SELECT id FROM attached.clients;",
 				current_epoch);
 	if (ret < 0) {
@@ -704,7 +704,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" "
 				"VALUES (?);", current_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -749,7 +749,7 @@ sqlite_remove_client(const unsigned char *clname, const size_t namelen)
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016" PRIx64 "\" "
 				"WHERE id==?;", current_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -799,7 +799,7 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen)
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = snprintf(buf, sizeof(buf), "SELECT count(*) FROM  \"rec-%" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "SELECT count(*) FROM  \"rec-%016" PRIx64 "\" "
 				"WHERE id==?;", recovery_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -892,7 +892,7 @@ sqlite_grace_start(void)
 			goto rollback;
 		}
 
-		ret = snprintf(buf, sizeof(buf), "CREATE TABLE \"rec-%" PRIx64 "\" "
+		ret = snprintf(buf, sizeof(buf), "CREATE TABLE \"rec-%016" PRIx64 "\" "
 				"(id BLOB PRIMARY KEY);",
 				tcur);
 		if (ret < 0) {
@@ -916,7 +916,7 @@ sqlite_grace_start(void)
 		 * values in the grace table, just clear out the records for
 		 * the current reboot epoch.
 		 */
-		ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%" PRIx64 "\";",
+		ret = snprintf(buf, sizeof(buf), "DELETE FROM \"rec-%016" PRIx64 "\";",
 				tcur);
 		if (ret < 0) {
 			xlog(L_ERROR, "sprintf failed!");
@@ -977,7 +977,7 @@ sqlite_grace_done(void)
 		goto rollback;
 	}
 
-	ret = snprintf(buf, sizeof(buf), "DROP TABLE \"rec-%" PRIx64 "\";",
+	ret = snprintf(buf, sizeof(buf), "DROP TABLE \"rec-%016" PRIx64 "\";",
 		recovery_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -1028,7 +1028,7 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
 		return -EINVAL;
 	}
 
-	ret = snprintf(buf, sizeof(buf), "SELECT * FROM \"rec-%" PRIx64 "\";",
+	ret = snprintf(buf, sizeof(buf), "SELECT * FROM \"rec-%016" PRIx64 "\";",
 		recovery_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
