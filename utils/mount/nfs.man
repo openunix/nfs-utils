@@ -1252,7 +1252,7 @@ If absolute cache coherence among clients is required,
 applications should use file locking. Alternatively, applications
 can also open their files with the O_DIRECT flag
 to disable data caching entirely.
-.SS "File timestamp maintainence"
+.SS "File timestamp maintenance"
 NFS servers are responsible for managing file and directory timestamps
 .RB ( atime ,
 .BR ctime ", and"
