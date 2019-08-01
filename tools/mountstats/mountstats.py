@@ -308,6 +308,8 @@ class DeviceData:
             op = words[0][:-1]
             self.__rpc_data['ops'] += [op]
             self.__rpc_data[op] = [int(word) for word in words[1:]]
+            if len(self.__rpc_data[op]) < 9:
+                self.__rpc_data[op] += [0]
 
     def parse_stats(self, lines):
         """Turn a list of lines from a mount stat file into a 
@@ -582,7 +584,7 @@ class DeviceData:
             self.__nfs_data['fstype'] = 'nfs4'
         self.__rpc_data['ops'] = ops
         for op in ops:
-            self.__rpc_data[op] = [0 for i in range(8)]
+            self.__rpc_data[op] = [0 for i in range(9)]
 
     def accumulate_iostats(self, new_stats):
         """Accumulate counters from all RPC op buckets in new_stats.  This is
