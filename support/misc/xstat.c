@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <errno.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -5,7 +9,6 @@
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "xstat.h"
 
 #ifdef HAVE_FSTATAT

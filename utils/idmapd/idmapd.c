@@ -34,6 +34,10 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif /* HAVE_CONFIG_H */
+
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/inotify.h>
@@ -61,10 +65,6 @@
 #include <ctype.h>
 #include <libgen.h>
 #include <nfsidmap.h>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif /* HAVE_CONFIG_H */
 
 #include "xlog.h"
 #include "conffile.h"
