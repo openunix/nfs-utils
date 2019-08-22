@@ -912,6 +912,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 				k5err = gssd_k5_err_msg(context, code);
 				printerr(3, "%s while getting keytab entry for '%s'\n",
 					 k5err, spn);
+				free(k5err);
+				k5err = NULL;
 				/*
 				 * We tried the active directory machine account
 				 * with the hostname part as-is and failed...
@@ -1231,6 +1233,8 @@ gssd_destroy_krb5_machine_creds(void)
 			k5err = gssd_k5_err_msg(context, code);
 			printerr(0, "WARNING: %s while destroying credential "
 				    "cache '%s'\n", k5err, ple->ccname);
+			free(k5err);
+			k5err = NULL;
 		}
 	}
 	krb5_free_context(context);

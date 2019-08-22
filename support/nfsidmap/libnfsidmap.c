@@ -486,6 +486,9 @@ out:
 	if (gss_methods)
 		conf_free_list(gss_methods);
 
+	if (nfs4_methods)
+		conf_free_list(nfs4_methods);
+
 	return ret ? -ENOENT: 0;
 }
 
