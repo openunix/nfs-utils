@@ -1016,6 +1016,8 @@ query_krb5_ccache(const char* cred_cache, char **ret_princname,
 	char *str = NULL;
 	char *princstring;
 
+	*ret_princname = *ret_realm = NULL;
+
 	ret = krb5_init_context(&context);
 	if (ret) 
 		return 0;
@@ -1050,7 +1052,7 @@ err_princ:
 	krb5_cc_close(context, ccache);
 err_cache:
 	krb5_free_context(context);
-	return found;
+	return (*ret_princname && *ret_realm);
 }
 
 /*==========================*/

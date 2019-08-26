@@ -520,14 +520,16 @@ static void
 clntscancb(int UNUSED(fd), short UNUSED(which), void *data)
 {
 	struct idmap_clientq *icq = data;
-	struct idmap_client *ic;
+	struct idmap_client *ic, *ic_next;
 
-	TAILQ_FOREACH(ic, icq, ic_next)
+	for (ic = TAILQ_FIRST(icq); ic != NULL; ic = ic_next) { 
+		ic_next = TAILQ_NEXT(ic, ic_next);
 		if (ic->ic_fd == -1 && nfsopen(ic) == -1) {
 			close(ic->ic_dirfd);
 			TAILQ_REMOVE(icq, ic, ic_next);
 			free(ic);
 		}
+	}
 }
 
 static void

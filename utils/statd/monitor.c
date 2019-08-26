@@ -66,7 +66,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
 			*my_name  = argp->mon_id.my_id.my_name;
 	struct my_id	*id = &argp->mon_id.my_id;
 	char		*cp;
-	notify_list	*clnt;
+	notify_list	*clnt = NULL;
 	struct sockaddr_in my_addr = {
 		.sin_family		= AF_INET,
 		.sin_addr.s_addr	= htonl(INADDR_LOOPBACK),
@@ -177,6 +177,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
 	 * We're committed...ignoring errors.  Let's hope that a malloc()
 	 * doesn't fail.  (I should probably fix this assumption.)
 	 */
+	clnt = NULL;
 	if (!existing && !(clnt = nlist_new(my_name, mon_name, 0))) {
 		free(dnsname);
 		xlog_warn("out of memory");
@@ -223,6 +224,7 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
 
 failure:
 	xlog_warn("STAT_FAIL to %s for SM_MON of %s", my_name, mon_name);
+	free(clnt);
 	return (&result);
 }
 
@@ -242,6 +244,7 @@ load_one_host(const char *hostname,
 	clnt->dns_name = strdup(hostname);
 	if (clnt->dns_name == NULL) {
 		nlist_free(NULL, clnt);
+		free(clnt);
 		return 0;
 	}
 
