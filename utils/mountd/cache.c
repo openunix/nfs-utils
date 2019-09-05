@@ -302,7 +302,7 @@ static int get_uuid(const char *val, size_t uuidlen, char *u)
  * we generate the identifier from statfs->f_fsid. The rest are network or
  * pseudo filesystems. (See <linux/magic.h> for the basic IDs.)
  */
-static const long int nonblkid_filesystems[] = {
+static const unsigned long nonblkid_filesystems[] = {
     0x2fc12fc1,    /* ZFS_SUPER_MAGIC */
     0x9123683E,    /* BTRFS_SUPER_MAGIC */
     0xFF534D42,    /* CIFS_MAGIC_NUMBER */
@@ -355,9 +355,9 @@ static int uuid_by_path(char *path, int type, size_t uuidlen, char *uuid)
 	rc = statfs64(path, &st);
 
 	if (type == 0 && rc == 0) {
-		const long int *bad;
+		const unsigned long *bad;
 		for (bad = nonblkid_filesystems; *bad; bad++) {
-			if (*bad == st.f_type)
+			if (*bad == (unsigned long)st.f_type)
 				break;
 		}
 		if (*bad == 0)
