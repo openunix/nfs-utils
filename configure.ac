@@ -545,7 +545,10 @@ AC_CHECK_SIZEOF(short)
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(size_t)
-AC_CHECK_SIZEOF(socklen_t)
+AC_CHECK_SIZEOF(socklen_t,, [AC_INCLUDES_DEFAULT
+                             #ifdef HAVE_SYS_SOCKET_H
+                             # include <sys/socket.h>
+                             #endif])
 
 
 dnl *************************************************************
