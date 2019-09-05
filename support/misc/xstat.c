@@ -9,6 +9,7 @@
 #include <sys/sysmacros.h>
 #include <unistd.h>
 
+#include "nfslib.h"
 #include "xstat.h"
 
 #ifdef HAVE_FSTATAT
@@ -66,7 +67,7 @@ statx_stat_nosync(int fd, const char *pathname, struct stat *statbuf, int flags)
 #else
 
 static int
-statx_stat_nosync(int fd, const char *pathname, struct stat *statbuf, int flags)
+statx_stat_nosync(int UNUSED(fd), const char *UNUSED(pathname), struct stat *UNUSED(statbuf), int UNUSED(flags))
 {
 	errno = ENOSYS;
 	return -1;
