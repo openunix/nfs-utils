@@ -343,7 +343,7 @@ cld_not_implemented(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
 
@@ -366,11 +366,39 @@ cld_not_implemented(struct cld_client *clnt)
 }
 
 static void
+cld_get_version(struct cld_client *clnt)
+{
+	int ret;
+	ssize_t bsize, wsize;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+
+	xlog(D_GENERAL, "%s: version = %u.", __func__, UPCALL_VERSION);
+
+	cmsg->cm_u.cm_version = UPCALL_VERSION;
+	cmsg->cm_status = 0;
+
+	bsize = sizeof(*cmsg);
+
+	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
+	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
+	if (wsize != bsize) {
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+			 __func__, wsize);
+		ret = cld_pipe_open(clnt);
+		if (ret) {
+			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
+					__func__, ret);
+			exit(ret);
+		}
+	}
+}
+
+static void
 cld_create(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	ret = cld_check_grace_period();
 	if (ret)
@@ -406,7 +434,7 @@ cld_remove(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	ret = cld_check_grace_period();
 	if (ret)
@@ -442,7 +470,7 @@ cld_check(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	/*
 	 * If we get a check upcall at all, it means we're talking to an old
@@ -489,7 +517,7 @@ cld_gracedone(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	/*
 	 * If we got a "gracedone" upcall while we're not in grace, then
@@ -543,7 +571,7 @@ reply:
 static int
 gracestart_callback(struct cld_client *clnt) {
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	cmsg->cm_status = -EINPROGRESS;
 
@@ -562,7 +590,7 @@ cld_gracestart(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
 
@@ -598,7 +626,7 @@ cldcb(int UNUSED(fd), short which, void *data)
 {
 	ssize_t len;
 	struct cld_client *clnt = data;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	if (which != EV_READ)
 		goto out;
@@ -632,6 +660,9 @@ cldcb(int UNUSED(fd), short which, void *data)
 		break;
 	case Cld_GraceStart:
 		cld_gracestart(clnt);
+		break;
+	case Cld_GetVersion:
+		cld_get_version(clnt);
 		break;
 	default:
 		xlog(L_WARNING, "%s: command %u is not yet implemented",

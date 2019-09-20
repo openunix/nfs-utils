@@ -33,7 +33,8 @@ enum cld_command {
 	Cld_Remove,		/* remove record of this cm_id */
 	Cld_Check,		/* is this cm_id allowed? */
 	Cld_GraceDone,		/* grace period is complete */
-	Cld_GraceStart,
+	Cld_GraceStart,		/* grace start (upload client records) */
+	Cld_GetVersion,		/* query max supported upcall version */
 };
 
 /* representation of long-form NFSv4 client ID */
@@ -51,7 +52,15 @@ struct cld_msg {
 	union {
 		int64_t		cm_gracetime;	/* grace period start time */
 		struct cld_name	cm_name;
+		uint8_t		cm_version;	/* for getting max version */
 	} __attribute__((packed)) cm_u;
+} __attribute__((packed));
+
+struct cld_msg_hdr {
+	uint8_t		cm_vers;		/* upcall version */
+	uint8_t		cm_cmd;			/* upcall command */
+	int16_t		cm_status;		/* return code */
+	uint32_t	cm_xid;			/* transaction id */
 } __attribute__((packed));
 
 #endif /* !_NFSD_CLD_H */

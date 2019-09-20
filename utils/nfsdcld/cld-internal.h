@@ -21,7 +21,9 @@
 struct cld_client {
 	int			cl_fd;
 	struct event		cl_event;
-	struct cld_msg	cl_msg;
+	union {
+		struct cld_msg	cl_msg;
+	} cl_u;
 };
 
 uint64_t current_epoch;

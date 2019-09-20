@@ -1152,7 +1152,7 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
 {
 	int ret;
 	sqlite3_stmt *stmt = NULL;
-	struct cld_msg *cmsg = &clnt->cl_msg;
+	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
 
 	if (recovery_epoch == 0) {
 		xlog(D_GENERAL, "%s: not in grace!", __func__);
