@@ -60,8 +60,6 @@
 
 #define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
 
-#define UPCALL_VERSION		1
-
 /* private data structures */
 
 /* global variables */
@@ -338,20 +336,46 @@ cld_check_grace_period(void)
 	return ret;
 }
 
+#if UPCALL_VERSION >= 2
+static ssize_t cld_message_size(void *msg)
+{
+	struct cld_msg_hdr *hdr = (struct cld_msg_hdr *)msg;
+
+	switch (hdr->cm_vers) {
+	case 1:
+		return sizeof(struct cld_msg);
+	case 2:
+		return sizeof(struct cld_msg_v2);
+	default:
+		xlog(L_FATAL, "%s invalid upcall version %d", __func__,
+		     hdr->cm_vers);
+		exit(-EINVAL);
+	}
+}
+#else
+static ssize_t cld_message_size(void *UNUSED(msg))
+{
+	return sizeof(struct cld_msg);
+}
+#endif
+
 static void
 cld_not_implemented(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
 
 	/* set up reply */
 	cmsg->cm_status = -EOPNOTSUPP;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize)
 		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
@@ -370,15 +394,18 @@ cld_get_version(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	xlog(D_GENERAL, "%s: version = %u.", __func__, UPCALL_VERSION);
 
 	cmsg->cm_u.cm_version = UPCALL_VERSION;
 	cmsg->cm_status = 0;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
@@ -398,7 +425,11 @@ cld_create(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	ret = cld_check_grace_period();
 	if (ret)
@@ -406,15 +437,25 @@ cld_create(struct cld_client *clnt)
 
 	xlog(D_GENERAL, "%s: create client record.", __func__);
 
-
+#if UPCALL_VERSION >= 2
+	if (cmsg->cm_vers >= 2)
+		ret = sqlite_insert_client_and_princhash(
+					cmsg->cm_u.cm_clntinfo.cc_name.cn_id,
+					cmsg->cm_u.cm_clntinfo.cc_name.cn_len,
+					cmsg->cm_u.cm_clntinfo.cc_princhash.cp_data,
+					cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len);
+	else
+		ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
+					   cmsg->cm_u.cm_name.cn_len);
+#else
 	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
 				   cmsg->cm_u.cm_name.cn_len);
+#endif
 
 reply:
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
@@ -434,7 +475,11 @@ cld_remove(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	ret = cld_check_grace_period();
 	if (ret)
@@ -448,8 +493,7 @@ cld_remove(struct cld_client *clnt)
 reply:
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
 			cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
@@ -470,7 +514,11 @@ cld_check(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	/*
 	 * If we get a check upcall at all, it means we're talking to an old
@@ -495,8 +543,7 @@ reply:
 	/* set up reply */
 	cmsg->cm_status = ret ? -EACCES : ret;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
 			cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
@@ -517,7 +564,11 @@ cld_gracedone(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	/*
 	 * If we got a "gracedone" upcall while we're not in grace, then
@@ -552,8 +603,7 @@ reply:
 	/* set up reply: downcall with 0 status */
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
-	bsize = sizeof(*cmsg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
@@ -571,12 +621,15 @@ reply:
 static int
 gracestart_callback(struct cld_client *clnt) {
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	cmsg->cm_status = -EINPROGRESS;
 
-	bsize = sizeof(struct cld_msg);
-
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "Sending client %.*s",
 			cmsg->cm_u.cm_name.cn_len, cmsg->cm_u.cm_name.cn_id);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
@@ -590,7 +643,11 @@ cld_gracestart(struct cld_client *clnt)
 {
 	int ret;
 	ssize_t bsize, wsize;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	xlog(D_GENERAL, "%s: updating grace epochs", __func__);
 
@@ -606,7 +663,7 @@ reply:
 	/* set up reply: downcall with 0 status */
 	cmsg->cm_status = ret ? -EREMOTEIO : ret;
 
-	bsize = sizeof(struct cld_msg);
+	bsize = cld_message_size(cmsg);
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
@@ -626,7 +683,11 @@ cldcb(int UNUSED(fd), short which, void *data)
 {
 	ssize_t len;
 	struct cld_client *clnt = data;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	if (which != EV_READ)
 		goto out;

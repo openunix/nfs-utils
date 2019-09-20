@@ -18,11 +18,20 @@
 #ifndef _CLD_INTERNAL_H_
 #define _CLD_INTERNAL_H_
 
+#if CLD_UPCALL_VERSION >= 2
+#define UPCALL_VERSION		2
+#else
+#define UPCALL_VERSION		1
+#endif
+
 struct cld_client {
 	int			cl_fd;
 	struct event		cl_event;
 	union {
-		struct cld_msg	cl_msg;
+		struct cld_msg		cl_msg;
+#if UPCALL_VERSION >= 2
+		struct cld_msg_v2	cl_msg_v2;
+#endif
 	} cl_u;
 };
 

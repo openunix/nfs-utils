@@ -37,8 +37,9 @@
  *        them in the database.
  *
  * rec-CCCCCCCCCCCCCCCC (where C is the hex representation of the epoch value):
- *        a single "id" column containing a BLOB with the long-form clientid
- *        as sent by the client.
+ *        an "id" column containing a BLOB with the long-form clientid
+ *        as sent by the client, and a "princhash" column containing a BLOB
+ *        with the sha256 hash of the kerberos principal (if available).
  */
 
 #ifdef HAVE_CONFIG_H
@@ -69,7 +70,7 @@
 #include "legacy.h"
 #include "nfslib.h"
 
-#define CLD_SQLITE_LATEST_SCHEMA_VERSION 3
+#define CLD_SQLITE_LATEST_SCHEMA_VERSION 4
 #define CLTRACK_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
 
 /* in milliseconds */
@@ -173,6 +174,106 @@ out:
 }
 
 static int
+sqlite_add_princ_col_cb(void *UNUSED(arg), int ncols, char **cols,
+			    char **UNUSED(colnames))
+{
+	int ret;
+	char *err;
+
+	if (ncols > 1)
+		return -EINVAL;
+	ret = snprintf(buf, sizeof(buf), "ALTER TABLE \"%s\" "
+			"ADD COLUMN princhash BLOB;", cols[0]);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return -EINVAL;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to add princhash column to table %s: %s",
+		     cols[0], err);
+		goto out;
+	}
+	xlog(D_GENERAL, "Added princhash column to table %s", cols[0]);
+out:
+	sqlite3_free(err);
+	return ret;
+}
+
+static int
+sqlite_maindb_update_v3_to_v4(void)
+{
+	int ret;
+	char *err;
+
+	ret = sqlite3_exec(dbh, "SELECT name FROM sqlite_master "
+			   "WHERE type=\"table\" AND name LIKE \"%rec-%\";",
+			   sqlite_add_princ_col_cb, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: Failed to update tables!: %s", __func__, err);
+	}
+	sqlite3_free(err);
+	return ret;
+}
+
+static int
+sqlite_maindb_update_v1v2_to_v4(void)
+{
+	int ret;
+	char *err;
+
+	/* create grace table */
+	ret = sqlite3_exec(dbh, "CREATE TABLE grace "
+				"(current INTEGER , recovery INTEGER);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to create grace table: %s", err);
+		goto out;
+	}
+
+	/* insert initial epochs into grace table */
+	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO grace "
+				"values (1, 0);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to set initial epochs: %s", err);
+		goto out;
+	}
+
+	/* create recovery table for current epoch */
+	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
+				"(id BLOB PRIMARY KEY, princhash BLOB);",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to create recovery table "
+				"for current epoch: %s", err);
+		goto out;
+	}
+
+	/* copy records from old clients table */
+	ret = sqlite3_exec(dbh, "INSERT INTO \"rec-0000000000000001\" (id) "
+				"SELECT id FROM clients;",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to copy client records: %s", err);
+		goto out;
+	}
+
+	/* drop the old clients table */
+	ret = sqlite3_exec(dbh, "DROP TABLE clients;",
+				NULL, NULL, &err);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "Unable to drop old clients table: %s", err);
+	}
+out:
+	sqlite3_free(err);
+	return ret;
+}
+
+static int
 sqlite_maindb_update_schema(int oldversion)
 {
 	int ret, ret2;
@@ -203,50 +304,19 @@ sqlite_maindb_update_schema(int oldversion)
 
 	/* Still at old version -- do conversion */
 
-	/* create grace table */
-	ret = sqlite3_exec(dbh, "CREATE TABLE grace "
-				"(current INTEGER , recovery INTEGER);",
-				NULL, NULL, &err);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to create grace table: %s", err);
-		goto rollback;
+	switch (oldversion) {
+	case 3:
+	case 2:
+		ret = sqlite_maindb_update_v3_to_v4();
+		break;
+	case 1:
+		ret = sqlite_maindb_update_v1v2_to_v4();
+		break;
+	default:
+		ret = -EINVAL;
 	}
-
-	/* insert initial epochs into grace table */
-	ret = sqlite3_exec(dbh, "INSERT OR FAIL INTO grace "
-				"values (1, 0);",
-				NULL, NULL, &err);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to set initial epochs: %s", err);
+	if (ret != SQLITE_OK)
 		goto rollback;
-	}
-
-	/* create recovery table for current epoch */
-	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
-				"(id BLOB PRIMARY KEY);",
-				NULL, NULL, &err);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to create recovery table "
-				"for current epoch: %s", err);
-		goto rollback;
-	}
-
-	/* copy records from old clients table */
-	ret = sqlite3_exec(dbh, "INSERT INTO \"rec-0000000000000001\" "
-				"SELECT id FROM clients;",
-				NULL, NULL, &err);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to copy client records: %s", err);
-		goto rollback;
-	}
-
-	/* drop the old clients table */
-	ret = sqlite3_exec(dbh, "DROP TABLE clients;",
-				NULL, NULL, &err);
-	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to drop old clients table: %s", err);
-		goto rollback;
-	}
 
 	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
 			"WHERE key = \"version\";",
@@ -300,7 +370,7 @@ rollback:
  * transaction. On any error, rollback the transaction.
  */
 static int
-sqlite_maindb_init_v3(void)
+sqlite_maindb_init_v4(void)
 {
 	int ret, ret2;
 	char *err = NULL;
@@ -360,7 +430,7 @@ sqlite_maindb_init_v3(void)
 
 	/* create recovery table for current epoch */
 	ret = sqlite3_exec(dbh, "CREATE TABLE \"rec-0000000000000001\" "
-				"(id BLOB PRIMARY KEY);",
+				"(id BLOB PRIMARY KEY, princhash BLOB);",
 				NULL, NULL, &err);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "Unable to create recovery table "
@@ -675,7 +745,7 @@ sqlite_copy_cltrack_records(int *num_rec)
 		xlog(L_ERROR, "Unable to clear records from current epoch: %s", err);
 		goto rollback;
 	}
-	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "INSERT INTO \"rec-%016" PRIx64 "\" (id) "
 				"SELECT id FROM attached.clients;",
 				current_epoch);
 	if (ret < 0) {
@@ -763,6 +833,12 @@ sqlite_prepare_dbh(const char *topdir)
 		/* DB is already set up. Do nothing */
 		ret = 0;
 		break;
+	case 3:
+		/* Old DB -- update to new schema */
+		ret = sqlite_maindb_update_schema(3);
+		if (ret)
+			goto out_close;
+		break;
 	case 2:
 		/* Old DB -- update to new schema */
 		ret = sqlite_maindb_update_schema(2);
@@ -778,7 +854,7 @@ sqlite_prepare_dbh(const char *topdir)
 		break;
 	case 0:
 		/* Query failed -- try to set up new DB */
-		ret = sqlite_maindb_init_v3();
+		ret = sqlite_maindb_init_v4();
 		if (ret)
 			goto out_close;
 		break;
@@ -835,7 +911,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
 	int ret;
 	sqlite3_stmt *stmt = NULL;
 
-	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" "
+	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" (id) "
 				"VALUES (?);", current_epoch);
 	if (ret < 0) {
 		xlog(L_ERROR, "sprintf failed!");
@@ -872,6 +948,79 @@ out_err:
 	sqlite3_finalize(stmt);
 	return ret;
 }
+
+#if UPCALL_VERSION >= 2
+/*
+ * Create a client record including hash the kerberos principal
+ *
+ * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
+ */
+int
+sqlite_insert_client_and_princhash(const unsigned char *clname, const size_t namelen,
+		const unsigned char *clprinchash, const size_t princhashlen)
+{
+	int ret;
+	sqlite3_stmt *stmt = NULL;
+
+	if (princhashlen > 0)
+		ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" "
+				"VALUES (?, ?);", current_epoch);
+	else
+		ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO \"rec-%016" PRIx64 "\" (id) "
+				"VALUES (?);", current_epoch);
+	if (ret < 0) {
+		xlog(L_ERROR, "sprintf failed!");
+		return ret;
+	} else if ((size_t)ret >= sizeof(buf)) {
+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+		return -EINVAL;
+	}
+
+	ret = sqlite3_prepare_v2(dbh, buf, -1, &stmt, NULL);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+			__func__, sqlite3_errmsg(dbh));
+		return ret;
+	}
+
+	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+				SQLITE_STATIC);
+	if (ret != SQLITE_OK) {
+		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
+				sqlite3_errmsg(dbh));
+		goto out_err;
+	}
+
+	if (princhashlen > 0) {
+		ret = sqlite3_bind_blob(stmt, 2, (const void *)clprinchash, princhashlen,
+					SQLITE_STATIC);
+		if (ret != SQLITE_OK) {
+			xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
+					sqlite3_errmsg(dbh));
+			goto out_err;
+		}
+	}
+
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_DONE)
+		ret = SQLITE_OK;
+	else
+		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
+				__func__, sqlite3_errmsg(dbh));
+
+out_err:
+	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+	sqlite3_finalize(stmt);
+	return ret;
+}
+#else
+int
+sqlite_insert_client_and_princhash(const unsigned char *clname, const size_t namelen,
+		const unsigned char *clprinchash, const size_t princhashlen)
+{
+	return -EINVAL;
+}
+#endif
 
 /* Remove a client record */
 int
@@ -1024,7 +1173,7 @@ sqlite_grace_start(void)
 		}
 
 		ret = snprintf(buf, sizeof(buf), "CREATE TABLE \"rec-%016" PRIx64 "\" "
-				"(id BLOB PRIMARY KEY);",
+				"(id BLOB PRIMARY KEY, princhash blob);",
 				tcur);
 		if (ret < 0) {
 			xlog(L_ERROR, "sprintf failed!");
@@ -1152,7 +1301,11 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
 {
 	int ret;
 	sqlite3_stmt *stmt = NULL;
+#if UPCALL_VERSION >= 2
+	struct cld_msg_v2 *cmsg = &clnt->cl_u.cl_msg_v2;
+#else
 	struct cld_msg *cmsg = &clnt->cl_u.cl_msg;
+#endif
 
 	if (recovery_epoch == 0) {
 		xlog(D_GENERAL, "%s: not in grace!", __func__);
@@ -1177,9 +1330,21 @@ sqlite_iterate_recovery(int (*cb)(struct cld_client *clnt), struct cld_client *c
 	}
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+		memset(&cmsg->cm_u, 0, sizeof(cmsg->cm_u));
+#if UPCALL_VERSION >= 2
+		memcpy(&cmsg->cm_u.cm_clntinfo.cc_name.cn_id,
+			sqlite3_column_blob(stmt, 0), NFS4_OPAQUE_LIMIT);
+		cmsg->cm_u.cm_clntinfo.cc_name.cn_len = sqlite3_column_bytes(stmt, 0);
+		if (sqlite3_column_bytes(stmt, 1) > 0) {
+			memcpy(&cmsg->cm_u.cm_clntinfo.cc_princhash.cp_data,
+				sqlite3_column_blob(stmt, 1), NFS4_OPAQUE_LIMIT);
+			cmsg->cm_u.cm_clntinfo.cc_princhash.cp_len = sqlite3_column_bytes(stmt, 1);
+		}
+#else
 		memcpy(&cmsg->cm_u.cm_name.cn_id, sqlite3_column_blob(stmt, 0),
 			NFS4_OPAQUE_LIMIT);
 		cmsg->cm_u.cm_name.cn_len = sqlite3_column_bytes(stmt, 0);
+#endif
 		cb(clnt);
 	}
 	if (ret == SQLITE_DONE)
