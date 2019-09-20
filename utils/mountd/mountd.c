@@ -210,10 +210,10 @@ killer (int sig)
 }
 
 static void
-sig_hup (int sig)
+sig_hup (int UNUSED(sig))
 {
 	/* don't exit on SIGHUP */
-	xlog (L_NOTICE, "Received SIGHUP... Ignoring.\n", sig);
+	xlog (L_NOTICE, "Received SIGHUP... Ignoring.\n");
 	return;
 }
 

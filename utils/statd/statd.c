@@ -136,7 +136,7 @@ static void log_modes(void)
 	strcat(buf, "TI-RPC ");
 #endif
 
-	xlog_warn(buf);
+	xlog_warn("%s", buf);
 }
 
 /*

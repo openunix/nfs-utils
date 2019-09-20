@@ -473,7 +473,7 @@ sqlite_fix_table_name(const char *name)
 	}
 	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
 	if (ret != SQLITE_OK) {
-		xlog(L_ERROR, "Unable to fix table for epoch %d: %s",
+		xlog(L_ERROR, "Unable to fix table for epoch %"PRIu64": %s",
 		     val, err);
 		goto out;
 	}

@@ -987,8 +987,7 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
 			} else if (found_type == i && found->m_warned == 0) {
 				xlog(L_WARNING, "%s exported to both %s and %s, "
 				     "arbitrarily choosing options from first",
-				     path, found->m_client->m_hostname, exp->m_client->m_hostname,
-				     dom);
+				     path, found->m_client->m_hostname, exp->m_client->m_hostname);
 				found->m_warned = 1;
 			}
 		}

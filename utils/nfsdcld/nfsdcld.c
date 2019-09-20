@@ -212,7 +212,7 @@ cld_inotify_cb(int UNUSED(fd), short which, void *data)
 	default:
 		/* anything else is fatal */
 		xlog(L_FATAL, "%s: unable to open new pipe (%d). Aborting.",
-			ret, __func__);
+			__func__, ret);
 		exit(ret);
 	}
 
