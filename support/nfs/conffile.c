@@ -412,11 +412,18 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
 
 	if (strcasecmp(line, "include")==0) {
 		/* load and parse subordinate config files */
+		_Bool optional = false;
+
+		if (val && *val == '-') {
+			optional = true;
+			val++;
+		}
+
 		relpath = relative_path(filename, val);
 		if (relpath == NULL) {
-			xlog_warn("config error at %s:%d: "
-				"error loading included config",
-				  filename, lineno);
+			if (!optional)
+				xlog_warn("config error at %s:%d: error loading included config",
+					  filename, lineno);
 			return;
 		}
 
