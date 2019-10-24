@@ -1093,7 +1093,7 @@ static int nfsmount_fg(struct nfsmount_info *mi)
 	for (;;) {
 		if (nfs_try_mount(mi))
 			return EX_SUCCESS;
-
+printf("nfsmount_fg: errno %d\n", errno);
 #pragma GCC diagnostic ignored "-Wdiscarded-qualifiers"
 		if (errno == EBUSY && is_mountpoint(mi->node)) {
 #pragma GCC diagnostic warning "-Wdiscarded-qualifiers"
