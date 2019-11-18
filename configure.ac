@@ -510,6 +510,7 @@ AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
 AC_STRUCT_TM
+AC_CHECK_TYPES([struct file_handle])
 
 dnl *************************************************************
 dnl Check for functions

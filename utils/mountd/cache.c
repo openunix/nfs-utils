@@ -446,7 +446,7 @@ static int same_path(char *child, char *parent, int len)
 	if (count_slashes(p) != count_slashes(parent))
 		return 0;
 
-#if HAVE_NAME_TO_HANDLE_AT
+#if defined(HAVE_NAME_TO_HANDLE_AT) && defined(HAVE_STRUCT_FILE_HANDLE)
 	struct {
 		struct file_handle fh;
 		unsigned char handle[128];
