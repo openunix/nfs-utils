@@ -221,7 +221,7 @@ static void auth_unix_gid(int f)
 		xlog(L_ERROR, "auth_unix_gid: error writing reply");
 }
 
-#if USE_BLKID
+#ifdef USE_BLKID
 static const char *get_uuid_blkdev(char *path)
 {
 	/* We set *safe if we know that we need the
