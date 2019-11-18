@@ -42,7 +42,9 @@ AC_DEFUN([AC_KERBEROS_V5],[
                    -f $dir/lib32/libgssapi_krb5.a -o \
                    -f $dir/lib32/libgssapi_krb5.so -o \
                    -f $dir/lib64/libgssapi_krb5.a -o \
-                   -f $dir/lib64/libgssapi_krb5.so \) ; then
+                   -f $dir/lib64/libgssapi_krb5.so -o \
+                   -f $dir/lib/$(uname -m)-linux-gnu/libgssapi_krb5.a -o \
+                   -f $dir/lib/$(uname -m)-linux-gnu/libgssapi_krb5.so \) ; then
          AC_DEFINE(HAVE_KRB5, 1, [Define this if you have MIT Kerberos libraries])
          KRBDIR="$dir"
          gssapi_lib=gssapi_krb5
