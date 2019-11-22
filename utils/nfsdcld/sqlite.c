@@ -512,7 +512,7 @@ sqlite_startup_query_grace(void)
 	current_epoch = tcur;
 	recovery_epoch = trec;
 	ret = 0;
-	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+	xlog(D_GENERAL, "%s: current_epoch=%"PRIu64" recovery_epoch=%"PRIu64,
 		__func__, current_epoch, recovery_epoch);
 out:
 	sqlite3_finalize(stmt);
@@ -1223,7 +1223,7 @@ sqlite_grace_start(void)
 
 	current_epoch = tcur;
 	recovery_epoch = trec;
-	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+	xlog(D_GENERAL, "%s: current_epoch=%"PRIu64" recovery_epoch=%"PRIu64,
 		__func__, current_epoch, recovery_epoch);
 
 out:
@@ -1282,7 +1282,7 @@ sqlite_grace_done(void)
 	}
 
 	recovery_epoch = 0;
-	xlog(D_GENERAL, "%s: current_epoch=%lu recovery_epoch=%lu",
+	xlog(D_GENERAL, "%s: current_epoch=%"PRIu64" recovery_epoch=%"PRIu64,
 		__func__, current_epoch, recovery_epoch);
 
 out:

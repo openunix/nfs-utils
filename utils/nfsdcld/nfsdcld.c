@@ -378,7 +378,7 @@ cld_not_implemented(struct cld_client *clnt)
 	bsize = cld_message_size(cmsg);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize)
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 
 	/* reopen pipe, just to be sure */
@@ -409,7 +409,7 @@ cld_get_version(struct cld_client *clnt)
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
@@ -459,7 +459,7 @@ reply:
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
@@ -498,7 +498,7 @@ reply:
 			cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
@@ -548,7 +548,7 @@ reply:
 			cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
@@ -607,7 +607,7 @@ reply:
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
@@ -667,7 +667,7 @@ reply:
 	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
 	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
 	if (wsize != bsize) {
-		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
+		xlog(L_ERROR, "%s: problem writing to cld pipe (%zd): %m",
 			 __func__, wsize);
 		ret = cld_pipe_open(clnt);
 		if (ret) {
