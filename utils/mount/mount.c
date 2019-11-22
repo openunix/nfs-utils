@@ -208,7 +208,7 @@ create_mtab (void) {
 	   that would create a file /proc/mounts in case the proc filesystem
 	   is not mounted, and the fchmod below would also fail. */
 	if (mtab_is_a_symlink()) {
-		return EX_SUCCESS;
+		return;
 	}
 
 	lock_mtab();
