@@ -51,6 +51,9 @@ statx_do_stat(int fd, const char *pathname, struct stat *statbuf, int flags)
 			statx_copy(statbuf, &stxbuf);
 			return 0;
 		}
+		/* glibc emulation doesn't support AT_STATX_DONT_SYNC */
+		if (errno == EINVAL)
+			errno = ENOSYS;
 		if (errno == ENOSYS)
 			statx_supported = 0;
 	} else
