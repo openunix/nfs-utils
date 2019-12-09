@@ -737,7 +737,7 @@ out:
 int
 main(int argc, char **argv)
 {
-	char arg;
+	int arg;
 	int rc = 0;
 	bool foreground = false;
 	char *progname;
