@@ -534,10 +534,22 @@ AC_FUNC_STAT
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
                gethostbyaddr gethostbyname gethostname getmntent \
-               getnameinfo getrpcbyname getrpcbynumber getrpcbynumber_r getifaddrs \
+               getnameinfo getrpcbyname getifaddrs \
                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
                ppoll realpath rmdir select socket strcasecmp strchr strdup \
                strerror strrchr strtol strtoul sigprocmask name_to_handle_at])
+
+save_CFLAGS=$CFLAGS
+save_LIBS=$LIBS
+CFLAGS="$CFLAGS $AM_CPPFLAGS"
+LIBS="$LIBS $LIBTIRPC"
+AC_CHECK_FUNCS([getrpcbynumber getrpcbynumber_r])
+CFLAGS=$save_CFLAGS
+LIBS=$save_LIBS
+
+if test "$ac_cv_func_getrpcbynumber_r" != "yes" -a "$ac_cv_func_getrpcbynumber" != "yes"; then
+   AC_MSG_ERROR([Neither getrpcbynumber_r nor getrpcbynumber are available])
+fi
 
 dnl *************************************************************
 dnl Check for data sizes
