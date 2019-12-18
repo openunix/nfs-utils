@@ -121,6 +121,9 @@
 #include <krb5.h>
 #include <rpc/auth_gss.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+
 #include "nfslib.h"
 #include "gssd.h"
 #include "err_util.h"
@@ -314,6 +317,25 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
 	return err;
 }
 
+/* check if the ticket cache exists, if not set nocache=1 so that new
+ * tgt is gotten
+ */
+static int
+gssd_check_if_cc_exists(struct gssd_k5_kt_princ *ple)
+{
+	int fd;
+	char cc_name[BUFSIZ];
+
+	snprintf(cc_name, sizeof(cc_name), "%s/%s%s_%s",
+		ccachesearch[0], GSSD_DEFAULT_CRED_PREFIX,
+		GSSD_DEFAULT_MACHINE_CRED_SUFFIX, ple->realm);
+	fd = open(cc_name, O_RDONLY);
+	if (fd < 0)
+		return 1;
+	close(fd);
+	return 0;
+}
+
 /*
  * Obtain credentials via a key in the keytab given
  * a keytab handle and a gssd_k5_kt_princ structure.
@@ -348,6 +370,8 @@ gssd_get_single_krb5_cred(krb5_context context,
 
 	memset(&my_creds, 0, sizeof(my_creds));
 
+	if (!nocache && !use_memcache)
+		nocache = gssd_check_if_cc_exists(ple);
 	/*
 	 * Workaround for clock skew among NFS server, NFS client and KDC
 	 * 300 because clock skew must be within 300sec for kerberos
