@@ -53,7 +53,7 @@ static void	print_ifsizeof(char *prefix, char *type);
 static void	print_ifclose(int indent);
 static void	print_ifstat(int indent, char *prefix, char *type, relation rel,
 			char *amax, char *objname, char *name);
-static void	emit_enum(definition *def);
+static void	emit_enum(__attribute__((unused)) definition *def);
 static void	emit_program(definition *def);
 static void	emit_union(definition *def);
 static void	emit_struct(definition *def);
@@ -286,7 +286,7 @@ print_ifstat(int indent, char *prefix, char *type, relation rel,
 }
 
 static void
-emit_enum(definition *def)
+emit_enum(__attribute__((unused)) definition *def)
 {
 	print_ifopen(1, "enum");
 	print_ifarg("(enum_t *)objp");
