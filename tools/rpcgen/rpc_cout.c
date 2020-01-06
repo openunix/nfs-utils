@@ -319,8 +319,8 @@ emit_union(definition *def)
   case_list *cl;
   declaration *cs;
   char *object;
-  char *vecformat = "objp->%s_u.%s";
-  char *format = "&objp->%s_u.%s";
+  char * const vecformat = "objp->%s_u.%s";
+  char * const format = "&objp->%s_u.%s";
 
   print_stat(1,&def->def.un.enum_decl);
   f_print(fout, "\tswitch (objp->%s) {\n", def->def.un.enum_decl.name);
