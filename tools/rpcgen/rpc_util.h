@@ -96,7 +96,7 @@ void storeval(list **, definition *);
 #define STOREVAL(list,item)	\
 	storeval(list,item)
 
-definition *findval();
+definition *findval(list *, char *, int (*)(definition *, char *));
 
 #define FINDVAL(list,item,finder) \
 	findval(list, item, finder)
