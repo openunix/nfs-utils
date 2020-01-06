@@ -91,7 +91,7 @@ extern int nonfatalerrors;
 /*
  * rpc_util routines 
  */
-void storeval();
+void storeval(list **, definition *);
 
 #define STOREVAL(list,item)	\
 	storeval(list,item)
