@@ -468,7 +468,7 @@ pdeclaration(char *name, declaration *dec, int tab, char *separator)
 		}
 	}
 #pragma GCC diagnostic ignored "-Wformat-security"
-	f_print(fout, separator );
+	f_print(fout, separator);
 #pragma GCC diagnostic warning "-Wformat-security"
 }
 
