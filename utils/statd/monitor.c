@@ -177,7 +177,6 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
 	 * We're committed...ignoring errors.  Let's hope that a malloc()
 	 * doesn't fail.  (I should probably fix this assumption.)
 	 */
-	clnt = NULL;
 	if (!existing && !(clnt = nlist_new(my_name, mon_name, 0))) {
 		free(dnsname);
 		xlog_warn("out of memory");
