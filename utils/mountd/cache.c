@@ -672,7 +672,6 @@ static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
 				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
 					return true;
 	}
-	/* Well, unreachable, actually: */
 	return false;
 }
 
