@@ -369,6 +369,23 @@ using an automounter (refer to
 .BR automount (8)
 for details).
 .TP 1.5i
+.BR nconnect= n
+When using a connection oriented protocol such as TCP, it may
+sometimes be advantageous to set up multiple connections between
+the client and server. For instance, if your clients and/or servers
+are equipped with multiple network interface cards (NICs), using multiple
+connections to spread the load may improve overall performance.
+In such cases, the
+.BR nconnect
+option allows the user to specify the number of connections
+that should be established between the client and server up to
+a limit of 16.
+.IP
+Note that the
+.BR nconnect
+option may also be used by some pNFS drivers to decide how many
+connections to set up to the data servers.
+.TP 1.5i
 .BR rdirplus " / " nordirplus
 Selects whether to use NFS v3 or v4 READDIRPLUS requests.
 If this option is not specified, the NFS client uses READDIRPLUS requests
