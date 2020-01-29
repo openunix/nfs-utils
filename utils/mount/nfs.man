@@ -121,6 +121,36 @@ option may mitigate some of the risks of using the
 .B soft
 option.
 .TP 1.5i
+.BR softreval " / " nosoftreval
+In cases where the NFS server is down, it may be useful to
+allow the NFS client to continue to serve up paths and
+attributes from cache after
+.B retrans
+attempts to revalidate that cache have timed out.
+This may, for instance, be helpful when trying to unmount a
+filesystem tree from a server that is permanently down.
+.IP
+It is possible to combine
+.BR softreval
+with the
+.B soft
+mount option, in which case operations that cannot be served up
+from cache will time out and return an error after
+.B retrans
+attempts. The combination with the default
+.B hard
+mount option implies those uncached operations will continue to
+retry until a response is received from the server.
+.IP
+Note: the default mount option is
+.BR nosoftreval
+which disallows fallback to cache when revalidation fails, and
+instead follows the behavior dictated by the
+.B hard
+or
+.B soft
+mount option.
+.TP 1.5i
 .BR intr " / " nointr
 This option is provided for backward compatibility.
 It is ignored after kernel 2.6.25.
