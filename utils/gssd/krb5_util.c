@@ -1066,8 +1066,6 @@ query_krb5_ccache(const char* cred_cache, char **ret_princname,
 			    *ret_realm = strdup(str+1);
 		    }
 		    k5_free_unparsed_name(context, princstring);
-		} else {
-			found = 0;
 		}
 	}
 	krb5_free_principal(context, principal);
