@@ -69,6 +69,12 @@ static int 		inotify_fd = -1;
 static struct event	pipedir_event;
 static bool old_kernel = false;
 
+uint64_t current_epoch;
+uint64_t recovery_epoch;
+int first_time;
+int num_cltrack_records;
+int num_legacy_records;
+
 static struct option longopts[] =
 {
 	{ "help", 0, NULL, 'h' },

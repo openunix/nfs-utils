@@ -35,10 +35,10 @@ struct cld_client {
 	} cl_u;
 };
 
-uint64_t current_epoch;
-uint64_t recovery_epoch;
-int first_time;
-int num_cltrack_records;
-int num_legacy_records;
+extern uint64_t current_epoch;
+extern uint64_t recovery_epoch;
+extern int first_time;
+extern int num_cltrack_records;
+extern int num_legacy_records;
 
 #endif /* _CLD_INTERNAL_H_ */

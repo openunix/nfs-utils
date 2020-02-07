@@ -67,6 +67,7 @@ static struct option longopts[] =
 };
 
 extern void sm_prog_1 (struct svc_req *, register SVCXPRT *);
+stat_chge	SM_stat_chge;
 
 #ifdef SIMULATIONS
 extern void simulator (int, char **);
