@@ -799,7 +799,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 	int tried_all = 0, tried_default = 0, tried_upper = 0;
 	krb5_principal princ;
 	const char *notsetstr = "not set";
-	char *adhostoverride;
+	char *adhostoverride = NULL;
 
 
 	/* Get full target hostname */
@@ -827,7 +827,6 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 				adhostoverride);
 	        /* No overflow: Windows cannot handle strings longer than 19 chars */
 	        strcpy(myhostad, adhostoverride);
-		free(adhostoverride);
 	} else {
 	        strcpy(myhostad, myhostname);
 	        for (i = 0; myhostad[i] != 0; ++i) {
@@ -836,6 +835,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 	        myhostad[i] = '$';
 	        myhostad[i+1] = 0;
 	}
+	if (adhostoverride)
+		krb5_free_string(context, adhostoverride);
 
 	if (!srchost) {
 		retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
