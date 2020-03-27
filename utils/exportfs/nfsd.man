@@ -81,6 +81,16 @@ for that path as exported to the given client.  The filehandle's length
 will be at most the number of bytes given.
 
 The filehandle will be represented in hex with a leading '\ex'.
+
+.TP
+.B clients/
+This directory contains a subdirectory for each NFSv4 client.  Each file
+under that subdirectory gives some details about the client in YAML
+format.  In addition, writing "expire\\n" to the
+.B ctl
+file will force the server to immediately revoke all state held by that
+client.
+
 .PP
 The directory
 .B /proc/net/rpc
