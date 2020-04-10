@@ -15,7 +15,7 @@ else
 GUMS_MAPPING_LIB =
 endif
 lib_LTLIBRARIES = libnfsidmap.la
-pkgplugin_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
+pkgplugin_LTLIBRARIES = nsswitch.la static.la regex.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
 
 # Library versioning notes from:
 #  http://sources.redhat.com/autobook/autobook/autobook_91.html
@@ -40,6 +40,10 @@ nsswitch_la_LIBADD = ../../support/nfs/libnfsconf.la
 static_la_SOURCES = static.c
 static_la_LDFLAGS = -module -avoid-version
 static_la_LIBADD = ../../support/nfs/libnfsconf.la
+
+regex_la_SOURCES = regex.c
+regex_la_LDFLAGS = -module -avoid-version
+regex_la_LIBADD = ../../support/nfs/libnfsconf.la
 
 umich_ldap_la_SOURCES = umich_ldap.c
 umich_ldap_la_LDFLAGS = -module -avoid-version
