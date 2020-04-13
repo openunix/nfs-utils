@@ -453,12 +453,33 @@ if test "x$enable_ldap" != "xno" ; then
                               [have_ldap="yes"],[have_ldap="no"])],
                 [have_ldap="no"])
         if test "x$have_ldap" = "xyes" ; then
-                AC_DEFINE([ENABLE_LDAP], 1, [Enable LDAP Support])
+                dnl check for sasl funcs
+                AC_CHECK_HEADERS(sasl.h sasl/sasl.h)
+                AC_CHECK_HEADERS(gsssasl.h)
+                AC_CHECK_TYPE(sasl_interact_t,[have_sasl_interact_t="yes"],,[
+                        #ifdef HAVE_SASL_SASL_H
+                        #include <sasl/sasl.h>
+                        #elif defined(HAVE_SASL_H)
+                        #include <sasl.h>
+                        #endif])
+		AC_CHECK_LIB([ldap],[ldap_sasl_interactive_bind_s],[have_ldap_sasl_interactive_bind_s="yes"])
+		AC_CHECK_LIB([gssapi_krb5],[gss_krb5_ccache_name],[have_gss_krb5_ccache_name="yes"])
+		if test "x$have_sasl_interact_t" = "xyes" -a \
+			"x$have_ldap_sasl_interactive_bind_s" = "xyes" -a \
+			"x$have_gss_krb5_ccache_name" = "xyes"; then
+			AC_DEFINE([HAVE_LDAP_SASL_INTERACTIVE_BIND_S],[1],[Has ldap_sasl_interactive_bind_s function])
+			AC_DEFINE([HAVE_GSS_KRB5_CCACHE_NAME],[1],[Has gss_krb5_ccache_name function])
+			AC_CHECK_HEADERS(gssapi/gssapi.h gssapi/gssapi_generic.h gssapi/gssapi_krb5.h gssapi.h krb5.h)
+			AC_DEFINE([ENABLE_LDAP_SASL],1,[Enable LDAP SASL support])
+			have_ldap_sasl="yes"
+		fi
+		AC_DEFINE([ENABLE_LDAP], 1, [Enable LDAP Support])
         elif test "x$enable_ldap$have_ldap" = "xyesno" ; then
                 AC_MSG_ERROR(LDAP support not found!)
         fi
 fi
 AM_CONDITIONAL(ENABLE_LDAP, test "x$have_ldap" = "xyes")
+AM_CONDITIONAL(ENABLE_LDAP_SASL, test "x$have_ldap_sasl" = "xyes")
 
 dnl Should we build gums mapping library?
 AC_ARG_ENABLE([gums],

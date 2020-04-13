@@ -258,6 +258,39 @@ It can take the same values as ldap.conf(5)'s
 tunable.
 (Default: "hard")
 .TP
+.B LDAP_timeout_seconds
+Number of seconds before timing out an LDAP request
+(Default: 4)
+.TP
+.B LDAP_sasl_mech
+SASL mechanism to be used for sasl authentication.  Required
+if SASL auth is to be used (Default: None)
+.TP
+.B LDAP_realm
+SASL realm to be used for sasl authentication. (Default: None)
+.TP
+.B LDAP_sasl_authcid
+Authentication identity to be used for sasl authentication. (Default: None)
+.TP
+.B LDAP_sasl_authzid
+Authorization identity to be used for sasl authentication. (Default: None)
+.TP
+.B LDAP_sasl_secprops
+Cyrus SASL security properties. It can  the same values as ldap.conf(5)'s
+sasl_secprops.
+.TP
+.B LDAP_sasl_canonicalize
+Specifies whether the LDAP server hostname should be canonicalised.
+If set to yes LDAP lib with do a reverse hostname lookup.
+If this is not set the LDAP library's default will be used. (Default:
+None)
+.TP
+.B LDAP_sasl_krb5_ccname
+Path to kerberos credential cache. If it is not set then the value
+of environment variable KRB5CCNAME will be used. If the environment
+variable is not set then the default mechanism of kerberos library
+will be used.
+.TP
 .B NFSv4_person_objectclass
 The object class name for people accounts in your local LDAP schema
 (Default: NFSv4RemotePerson)
@@ -309,10 +342,6 @@ is true, this is the attribute to be searched for.
 .B NFSv4_grouplist_filter
 An optional search filter for determining group membership.
 (No Default)
-.TP
-.B LDAP_timeout_seconds
-Number of seconds before timing out an LDAP request
-(Default: 4)
 .\"
 .\" -------------------------------------------------------------------
 .\" An Example
