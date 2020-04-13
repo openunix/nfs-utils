@@ -20,6 +20,7 @@
 #endif
 
 #include <nfslib.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdio_ext.h>
 #include <string.h>
@@ -238,7 +239,7 @@ cache_flush(int force)
 	    stb.st_mtime > now)
 		stb.st_mtime = time(0);
 	
-	sprintf(stime, "%ld\n", stb.st_mtime);
+	sprintf(stime, "%" PRId64 "\n", (int64_t)stb.st_mtime);
 	for (c=0; cachelist[c]; c++) {
 		int fd;
 		sprintf(path, "/proc/net/rpc/%s/flush", cachelist[c]);
