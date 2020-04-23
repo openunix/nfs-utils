@@ -42,7 +42,7 @@ void qword_add(char **bpp, int *lp, char *str)
 
 	if (len < 0) return;
 
-	while ((c=*str++) && len)
+	while ((c=*str++) && len > 0)
 		switch(c) {
 		case ' ':
 		case '\t':
