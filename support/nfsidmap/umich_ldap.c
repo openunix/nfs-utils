@@ -115,6 +115,7 @@ struct umich_ldap_info {
 				   looking up user groups */
 	int ldap_timeout;	/* Timeout in seconds for searches
 				   by ldap_search_st */
+	int follow_referrals;	/* whether to follow ldap referrals */
 	char *sasl_mech;	/* sasl mech to be used */
 	char *sasl_realm;	/* SASL realm for SASL authentication */
 	char *sasl_authcid;	/* authentication identity to be used  */
@@ -139,6 +140,7 @@ static struct umich_ldap_info ldap_info = {
 	.tls_reqcert = LDAP_OPT_X_TLS_HARD,
 	.memberof_for_groups = 0,
 	.ldap_timeout = DEFAULT_UMICH_SEARCH_TIMEOUT,
+	.follow_referrals = 1,
 	.sasl_mech = NULL,
 	.sasl_realm = NULL,
 	.sasl_authcid = NULL,
@@ -344,6 +346,15 @@ ldap_init_and_bind(LDAP **pld,
 	/* Set sizelimit option if requested */
 	if (sizelimit) {
 		ldap_set_option(ld, LDAP_OPT_SIZELIMIT, (void *)sizelimit);
+	}
+
+	lerr = ldap_set_option(ld, LDAP_OPT_REFERRALS,
+			linfo->follow_referrals ? (void *)LDAP_OPT_ON :
+						  (void *)LDAP_OPT_OFF);
+	if (lerr != LDAP_SUCCESS) {
+		IDMAP_LOG(2, ("ldap_init_and_bind: setting LDAP_OPT_REFERRALS "
+			      "failed: %s (%d)", ldap_err2string(lerr), lerr));
+		goto out;
 	}
 
 	/* Set option to to use SSL/TLS if requested */
@@ -1310,7 +1321,7 @@ out_err:
 static int
 umichldap_init(void)
 {
-	char *tssl, *canonicalize, *memberof, *cert_req;
+	char *tssl, *canonicalize, *memberof, *cert_req, *follow_referrals;
 	char missing_msg[128] = "";
 	char *server_in, *canon_name;
 
@@ -1377,6 +1388,16 @@ umichldap_init(void)
 	}
 	ldap_info.sasl_krb5_ccname = conf_get_str(LDAP_SECTION,
 						  "LDAP_sasl_krb5_ccname");
+
+	follow_referrals = conf_get_str_with_def(LDAP_SECTION,
+						 "LDAP_follow_referrals",
+						 "true");
+	if ((strcasecmp(follow_referrals, "true") == 0) ||
+	    (strcasecmp(follow_referrals, "on") == 0) ||
+	    (strcasecmp(follow_referrals, "yes") == 0))
+		ldap_info.follow_referrals = 1;
+	else
+		ldap_info.follow_referrals = 0;
 
 	/* Verify required information is supplied */
 	if (server_in == NULL || strlen(server_in) == 0)
@@ -1542,6 +1563,8 @@ umichldap_init(void)
 		      ldap_info.sasl_canonicalize));
 	IDMAP_LOG(1, ("umichldap_init: sasl_krb5_ccname: %s",
 		      ldap_info.sasl_krb5_ccname));
+	IDMAP_LOG(1, ("umichldap_init: follow_referrals: %s",
+		  ldap_info.follow_referrals ? "yes" : "no"));
 
 	IDMAP_LOG(1, ("umichldap_init: NFSv4_person_objectclass : %s",
 		  ldap_map.NFSv4_person_objcls));
