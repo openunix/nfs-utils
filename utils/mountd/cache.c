@@ -352,7 +352,7 @@ static int uuid_by_path(char *path, int type, size_t uuidlen, char *uuid)
 	const char *val;
 	int rc;
 
-	rc = statfs64(path, &st);
+	rc = nfsd_path_statfs64(path, &st);
 
 	if (type == 0 && rc == 0) {
 		const unsigned long *bad;

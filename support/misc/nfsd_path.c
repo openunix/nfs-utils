@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -178,6 +179,48 @@ nfsd_path_lstat(const char *pathname, struct stat *statbuf)
 	if (!nfsd_wq)
 		return xlstat(pathname, statbuf);
 	return nfsd_run_stat(nfsd_wq, nfsd_lstatfunc, pathname, statbuf);
+}
+
+struct nfsd_statfs64_data {
+	const char *pathname;
+	struct statfs64 *statbuf;
+	int ret;
+	int err;
+};
+
+static void
+nfsd_statfs64func(void *data)
+{
+	struct nfsd_statfs64_data *d = data;
+
+	d->ret = statfs64(d->pathname, d->statbuf);
+	if (d->ret < 0)
+		d->err = errno;
+}
+
+static int
+nfsd_run_statfs64(struct xthread_workqueue *wq,
+		  const char *pathname,
+		  struct statfs64 *statbuf)
+{
+	struct nfsd_statfs64_data data = {
+		pathname,
+		statbuf,
+		0,
+		0
+	};
+	xthread_work_run_sync(wq, nfsd_statfs64func, &data);
+	if (data.ret < 0)
+		errno = data.err;
+	return data.ret;
+}
+
+int
+nfsd_path_statfs64(const char *pathname, struct statfs64 *statbuf)
+{
+	if (!nfsd_wq)
+		return statfs64(pathname, statbuf);
+	return nfsd_run_statfs64(nfsd_wq, pathname, statbuf);
 }
 
 struct nfsd_realpath_data {
