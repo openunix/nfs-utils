@@ -659,55 +659,66 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
 	return 0;
 }
 
-static bool match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
+static int match_fsid(struct parsed_fsid *parsed, nfs_export *exp, char *path)
 {
 	struct stat stb;
 	int type;
 	char u[16];
 
 	if (nfsd_path_stat(path, &stb) != 0)
-		return false;
+		goto path_error;
 	if (!S_ISDIR(stb.st_mode) && !S_ISREG(stb.st_mode))
-		return false;
+		goto nomatch;
 
 	switch (parsed->fsidtype) {
 	case FSID_DEV:
 	case FSID_MAJOR_MINOR:
 	case FSID_ENCODE_DEV:
 		if (stb.st_ino != parsed->inode)
-			return false;
+			goto nomatch;
 		if (parsed->major != major(stb.st_dev) ||
 		    parsed->minor != minor(stb.st_dev))
-			return false;
-		return true;
+			goto nomatch;
+		goto match;
 	case FSID_NUM:
 		if (((exp->m_export.e_flags & NFSEXP_FSID) == 0 ||
 		     exp->m_export.e_fsid != parsed->fsidnum))
-			return false;
-		return true;
+			goto nomatch;
+		goto match;
 	case FSID_UUID4_INUM:
 	case FSID_UUID16_INUM:
 		if (stb.st_ino != parsed->inode)
-			return false;
+			goto nomatch;
 		goto check_uuid;
 	case FSID_UUID8:
 	case FSID_UUID16:
-		if (!is_mountpoint(path))
-			return false;
+		errno = 0;
+		if (!is_mountpoint(path)) {
+			if (!errno)
+				goto nomatch;
+			goto path_error;
+		}
 	check_uuid:
 		if (exp->m_export.e_uuid) {
 			get_uuid(exp->m_export.e_uuid, parsed->uuidlen, u);
 			if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
-				return true;
+				goto match;
 		}
 		else
 			for (type = 0;
 			     uuid_by_path(path, type, parsed->uuidlen, u);
 			     type++)
 				if (memcmp(u, parsed->fhuuid, parsed->uuidlen) == 0)
-					return true;
+					goto match;
 	}
-	return false;
+nomatch:
+	return 0;
+match:
+	return 1;
+path_error:
+	if (path_lookup_error(errno))
+		goto nomatch;
+	return -1;
 }
 
 static struct addrinfo *lookup_client_addr(char *dom)
@@ -815,8 +826,12 @@ static void nfsd_fh(int f)
 					   exp->m_export.e_path))
 				dev_missing ++;
 
-			if (!match_fsid(&parsed, exp, path))
+			switch(match_fsid(&parsed, exp, path)) {
+			case 0:
 				continue;
+			case -1:
+				goto out;
+			}
 			if (is_ipaddr_client(dom)
 					&& !ipaddr_client_matches(exp, ai))
 				continue;
