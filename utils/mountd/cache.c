@@ -72,6 +72,18 @@ static ssize_t cache_write(int fd, const char *buf, size_t len)
 	return nfsd_path_write(fd, buf, len);
 }
 
+static bool path_lookup_error(int err)
+{
+	switch (err) {
+	case ELOOP:
+	case ENAMETOOLONG:
+	case ENOENT:
+	case ENOTDIR:
+		return 1;
+	}
+	return 0;
+}
+
 /*
  * Support routines for text-based upcalls.
  * Fields are separated by spaces.
@@ -430,10 +442,70 @@ static inline int count_slashes(char *p)
 	return cnt;
 }
 
+#if defined(HAVE_STRUCT_FILE_HANDLE)
+static int check_same_path_by_handle(const char *child, const char *parent)
+{
+	struct {
+		struct file_handle fh;
+		unsigned char handle[128];
+	} fchild, fparent;
+	int mnt_child, mnt_parent;
+
+	fchild.fh.handle_bytes = 128;
+	fparent.fh.handle_bytes = 128;
+
+	/* This process should have the CAP_DAC_READ_SEARCH capability */
+	if (nfsd_name_to_handle_at(AT_FDCWD, child, &fchild.fh, &mnt_child, 0) < 0)
+		return -1;
+	if (nfsd_name_to_handle_at(AT_FDCWD, parent, &fparent.fh, &mnt_parent, 0) < 0) {
+		/* If the child resolved, but the parent did not, they differ */
+		if (path_lookup_error(errno))
+			return 0;
+		/* Otherwise, we just don't know */
+		return -1;
+	}
+
+	if (mnt_child != mnt_parent ||
+	    fchild.fh.handle_bytes != fparent.fh.handle_bytes ||
+	    fchild.fh.handle_type != fparent.fh.handle_type ||
+	    memcmp(fchild.handle, fparent.handle,
+		   fchild.fh.handle_bytes) != 0)
+		return 0;
+
+	return 1;
+}
+#else
+static int check_same_path_by_handle(const char *child, const char *parent)
+{
+	errno = ENOSYS;
+	return -1;
+}
+#endif
+
+static int check_same_path_by_inode(const char *child, const char *parent)
+{
+	struct stat sc, sp;
+
+	/* This is nearly good enough.  However if a directory is
+	 * bind-mounted in two places and both are exported, it
+	 * could give a false positive
+	 */
+	if (nfsd_path_lstat(child, &sc) != 0)
+		return 0;
+	if (nfsd_path_lstat(parent, &sp) != 0)
+		return 0;
+	if (sc.st_dev != sp.st_dev)
+		return 0;
+	if (sc.st_ino != sp.st_ino)
+		return 0;
+
+	return 1;
+}
+
 static int same_path(char *child, char *parent, int len)
 {
 	static char p[PATH_MAX];
-	struct stat sc, sp;
+	int err;
 
 	if (len <= 0)
 		len = strlen(child);
@@ -446,48 +518,11 @@ static int same_path(char *child, char *parent, int len)
 	if (count_slashes(p) != count_slashes(parent))
 		return 0;
 
-#if defined(HAVE_NAME_TO_HANDLE_AT) && defined(HAVE_STRUCT_FILE_HANDLE)
-	struct {
-		struct file_handle fh;
-		unsigned char handle[128];
-	} fchild, fparent;
-	int mnt_child, mnt_parent;
-
-	fchild.fh.handle_bytes = 128;
-	fparent.fh.handle_bytes = 128;
-	if (name_to_handle_at(AT_FDCWD, p, &fchild.fh, &mnt_child, 0) != 0) {
-		if (errno == ENOSYS)
-			goto fallback;
-		return 0;
-	}
-	if (name_to_handle_at(AT_FDCWD, parent, &fparent.fh, &mnt_parent, 0) != 0)
-		return 0;
-
-	if (mnt_child != mnt_parent ||
-	    fchild.fh.handle_bytes != fparent.fh.handle_bytes ||
-	    fchild.fh.handle_type != fparent.fh.handle_type ||
-	    memcmp(fchild.handle, fparent.handle,
-		   fchild.fh.handle_bytes) != 0)
-		return 0;
-
-	return 1;
-fallback:
-#endif
-
-	/* This is nearly good enough.  However if a directory is
-	 * bind-mounted in two places and both are exported, it
-	 * could give a false positive
-	 */
-	if (nfsd_path_lstat(p, &sc) != 0)
-		return 0;
-	if (nfsd_path_lstat(parent, &sp) != 0)
-		return 0;
-	if (sc.st_dev != sp.st_dev)
-		return 0;
-	if (sc.st_ino != sp.st_ino)
-		return 0;
-
-	return 1;
+	/* Try to use filehandle approach before falling back to stat() */
+	err = check_same_path_by_handle(p, parent);
+	if (err != -1)
+		return err;
+	return check_same_path_by_inode(p, parent);
 }
 
 static int is_subdirectory(char *child, char *parent)
