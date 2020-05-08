@@ -843,8 +843,14 @@ static void nfsd_fh(int f)
 			}
 		}
 	}
-	if (found && 
-	    found->e_mountpoint &&
+
+	if (!found) {
+		/* The missing dev could be what we want, so just be
+		 * quiet rather than returning stale yet
+		 */
+		if (dev_missing)
+			goto out;
+	} else if (found->e_mountpoint &&
 	    !is_mountpoint(found->e_mountpoint[0]?
 			   found->e_mountpoint:
 			   found->e_path)) {
@@ -855,17 +861,12 @@ static void nfsd_fh(int f)
 		 */
 		/* FIXME we need to make sure we re-visit this later */
 		goto out;
+	} else if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0) {
+		if (!path_lookup_error(errno))
+			goto out;
+		/* The kernel is saying the path is unexportable */
+		found = NULL;
 	}
-	if (!found && dev_missing) {
-		/* The missing dev could be what we want, so just be
-		 * quite rather than returning stale yet
-		 */
-		goto out;
-	}
-
-	if (found)
-		if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0)
-			found = 0;
 
 	bp = buf; blen = sizeof(buf);
 	qword_add(&bp, &blen, dom);
