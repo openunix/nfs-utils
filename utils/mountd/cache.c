@@ -936,12 +936,13 @@ static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_m
 
 }
 
-static int dump_to_cache(int f, char *buf, int buflen, char *domain,
+static int dump_to_cache(int f, char *buf, int blen, char *domain,
 			 char *path, struct exportent *exp, int ttl)
 {
 	char *bp = buf;
-	int blen = buflen;
 	time_t now = time(0);
+	size_t buflen;
+	ssize_t err;
 
 	if (ttl <= 1)
 		ttl = DEFAULT_TTL;
@@ -974,8 +975,18 @@ static int dump_to_cache(int f, char *buf, int buflen, char *domain,
 	} else
 		qword_adduint(&bp, &blen, now + ttl);
 	qword_addeol(&bp, &blen);
-	if (blen <= 0) return -1;
-	if (cache_write(f, buf, bp - buf) != bp - buf) return -1;
+	if (blen <= 0) {
+		errno = ENOBUFS;
+		return -1;
+	}
+	buflen = bp - buf;
+	err = cache_write(f, buf, buflen);
+	if (err < 0)
+		return err;
+	if ((size_t)err != buflen) {
+		errno = ENOSPC;
+		return -1;
+	}
 	return 0;
 }
 
