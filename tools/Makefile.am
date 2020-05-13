@@ -9,7 +9,7 @@ endif
 OPTDIRS += nfsconf
 
 if CONFIG_NFSDCLD
-OPTDIRS += clddb-tool
+OPTDIRS += nfsdclddb
 endif
 
 SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)

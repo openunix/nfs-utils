@@ -695,7 +695,7 @@ AC_CONFIG_FILES([
 	tools/mountstats/Makefile
 	tools/nfs-iostat/Makefile
 	tools/nfsconf/Makefile
-	tools/clddb-tool/Makefile
+	tools/nfsdclddb/Makefile
 	utils/Makefile
 	utils/blkmapd/Makefile
 	utils/nfsdcld/Makefile

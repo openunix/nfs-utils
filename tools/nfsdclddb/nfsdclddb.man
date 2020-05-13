@@ -1,20 +1,20 @@
 .\"
-.\" clddb-tool(8)
+.\" nfsdclddb(8)
 .\"
-.TH clddb-tool 8 "07 Aug 2019"
+.TH nfsdclddb 8 "07 Aug 2019"
 .SH NAME
-clddb-tool \- Tool for manipulating the nfsdcld sqlite database
+nfsdclddb \- Tool for manipulating the nfsdcld sqlite database
 .SH SYNOPSIS
-.B clddb-tool
+.B nfsdclddb
 .RB [ \-h | \-\-help ]
 .P
-.B clddb-tool
+.B nfsdclddb
 .RB [ \-p | \-\-path
 .IR dbpath ]
 .B fix-table-names
 .RB [ \-h | \-\-help ]
 .P
-.B clddb-tool
+.B nfsdclddb
 .RB [ \-p | \-\-path
 .IR dbpath ]
 .B downgrade-schema
@@ -22,7 +22,7 @@ clddb-tool \- Tool for manipulating the nfsdcld sqlite database
 .RB [ \-v | \-\-version
 .IR to-version ]
 .P
-.B clddb-tool
+.B nfsdclddb
 .RB [ \-p | \-\-path
 .IR dbpath ]
 .B print
@@ -31,10 +31,10 @@ clddb-tool \- Tool for manipulating the nfsdcld sqlite database
 .P
 
 .SH DESCRIPTION
-.RB "The " clddb-tool " command is provided to perform some manipulation of the nfsdcld sqlite database schema and to print the contents of the database."
+.RB "The " nfsdclddb " command is provided to perform some manipulation of the nfsdcld sqlite database schema and to print the contents of the database."
 .SS Sub-commands
 Valid
-.B clddb-tool
+.B nfsdclddb
 subcommands are:
 .IP "\fBfix-table-names\fP"
 .RB "A previous version of " nfsdcld "(8) contained a bug that corrupted the reboot epoch table names.  This sub-command will fix those table names."
@@ -66,7 +66,7 @@ The schema version to downgrade to.  Currently the schema can only be downgraded
 Do not list the clients in the reboot epoch tables in the output.
 .SH NOTES
 The
-.B clddb-tool
+.B nfsdclddb
 command will not allow the
 .B fix-table-names
 or
