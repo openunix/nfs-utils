@@ -46,19 +46,18 @@ def init_worker():
 # this function converts the info file to a dictionary format, sorta. 
 def file_to_dict(path):
     client_info = {}
-    with open(path) as f:
-        for line in f:
-            try:
-                (key, val) = line.split(':')
-                client_info[key] = val
-    # FIXME: There has to be a better way of converting the info file to a dictionary.
-            except ValueError:
+    try:
+        with open(path) as f:
+            for line in f:
                 try:
-                    (key, val) = line.split()
-                    client_info[key] = val
-                except:
-                    pass
-    return client_info
+                    (key, val) = line.split(':', 1)
+                    client_info[key] = val.strip()
+                    # FIXME: There has to be a better way of converting the info file to a dictionary.
+                except ValueError as reason:
+                    print('%s' % reason)
+        return client_info
+    except OSError as reason:
+        print('%s' % reason)
 
 # this function gets the paths from /proc/fs/nfsd/clients/
 # returns a list of paths for each client which has nfs-share mounted.
@@ -70,10 +69,10 @@ def getpaths():
         exit('%s' % reason)
     if len(dirs) !=0:
 	    for i in dirs:
-		    path.append('/proc/fs/nfsd/clients/' + i + '/states')
+                path.append('/proc/fs/nfsd/clients/' + i + '/states')
 	    return (path)
     else:
-	    exit('Nothing to process')
+        exit('Nothing to process')
 
 # A single function to rule them all, in this function we gather all the data
 # from already populated data_list and client_info.
@@ -83,12 +82,11 @@ def printer(data_list, argument):
     for i in data_list:
         for key in i:
             inode = i[key]['superblock'].split(':')[-1]
-            # get the ip address from client_info as 'address:' note the extra
-            # ':' as a suffix to address. If there is a better way to convert
-            # the file to dictionary, please change the following value too.
-            client_ip = client_info['address:']
             # The ip address is quoted, so we dequote it.
-            client_ip = client_ip[1:-1]
+            try:
+                client_ip = client_info['address'][1:-1]
+            except:
+                client_ip = "N/A"
             try:
                 # if the nfs-server reboots while the nfs-client holds the files open,
                 # the nfs-server would print the filename as '/'. For such instaces we
@@ -110,15 +108,25 @@ def printer(data_list, argument):
                 deny = i[key]['deny']
             except:
                 deny = ''
-            hostname = client_info['name'].split()[-1].split('"')[0]
-            hostname =  hostname.split('.')[0]
+            try:
+                hostname = client_info['name'].split()[-1].split('"')[0]
+                hostname =  hostname.split('.')[0]
+                # if the hostname is too long, it messes up with the output being in columns,
+                # therefore we truncate the hostname followed by two '..' as suffix.
+                if len(hostname) > 20:
+                    hostname = hostname[0:20] + '..'
+            except:
+                hostname = "N/A"
+            try:
+                clientid = client_info['clientid']
+            except:
+                clientid = "N/A"
+            try:
+                minorversion = "4." + client_info['minor version']
+            except:
+                minorversion = "N/A"
+
             otype = i[key]['type']
-            # if the hostname is too long, it messes up with the output being in columns,
-            # therefore we truncate the hostname followed by two '..' as suffix.
-            if len(hostname) > 20:
-                hostname = hostname[0:20] + '..'
-            clientid = client_info['clientid'].strip()
-            minorversion = client_info['minor version'].rstrip().rsplit()[0]
             # since some fields do not have deny column, we drop those if -t is either
             # layout or lock.
             drop = ['layout', 'lock']
@@ -138,17 +146,20 @@ def printer(data_list, argument):
                    print('%-22s' %client_ip, end='| ')
                 if (argument.clientinfo == True) :
                     print('%-20s' %clientid, end='| ')
-                    print('4.%-3s' %minorversion, end='| ')
+                    print('%-5s' %minorversion, end='| ')
                 print(fname)
 
 def opener(path):
     try:
         with open(path, 'r') as nfsdata:
-            data = yaml.load(nfsdata, Loader = yaml.BaseLoader)
-            if data is not None:
-                clientinfo = path.rsplit('/', 1)[0] + '/info'
-                data.append(clientinfo)
+            try:
+                data = yaml.load(nfsdata, Loader = yaml.BaseLoader)
+                if data is not None:
+                    clientinfo = path.rsplit('/', 1)[0] + '/info'
+                    data.append(clientinfo)
                 return data
+            except:
+                print("Exception occurred, Please make sure %s is a YAML file" %path)
 
     except OSError as reason:
         print('%s' % reason)
