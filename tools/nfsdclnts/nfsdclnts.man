@@ -63,6 +63,18 @@ Print hostname of nfs\-client instead of ip-address.
 Hide the header information.
 .RE
 .sp
+\fB\-v, \-\-verbose\fP
+.RS 4
+Verbose operation, show debug messages.
+.RE
+.sp
+\fB\-f, \-\-file\fP
+.RS 4
+Instead of processing all client directories under /proc/fs/nfsd/clients, one can provide a specific
+states file to process. One should make sure that info file resides in the same directory as states file.
+If the info file is not valid or present the fields would be marked as "N/A".
+.RE
+.sp
 \fB\-h, \-\-help\fP
 .RS 4
 Print help explaining the command line options.
@@ -118,7 +130,19 @@ Inode number | Type   | Access | Deny | ip address            | Client ID       
 .fi
 .if n .RE
 .sp
-\fBnfsdclnts.py \-\-quiet \-\-hostname\fP
+\fBnfsdclnts \-\-file /proc/fs/nfsd/clients/3/states -t open\fP
+.RS 4
+Process specific states file.
+.RE
+.sp
+.if n .RS 4
+.nf
+Inode number | Type   | Access | Deny | ip address            | Client ID           | vers | Filename
+33823232     | open   | r\-     | \-\-   | [::1]:757             | 0xc79a009f5eb65e84  | 4.2  | testfile
+.fi
+.if n .RE
+.sp
+\fBnfsdclnts \-\-quiet \-\-hostname\fP
 .RS 4
 Hide the header information.
 .RE

@@ -54,10 +54,16 @@ def file_to_dict(path):
                     client_info[key] = val.strip()
                     # FIXME: There has to be a better way of converting the info file to a dictionary.
                 except ValueError as reason:
-                    print('%s' % reason)
+                    if verbose:
+                        print('Exception occured, %s' % reason)
+
+        if len(client_info) == 0 and verbose:
+            print("Provided %s file is not valid" %path)
         return client_info
+
     except OSError as reason:
-        print('%s' % reason)
+        if verbose:
+            print('%s' % reason)
 
 # this function gets the paths from /proc/fs/nfsd/clients/
 # returns a list of paths for each client which has nfs-share mounted.
@@ -159,10 +165,12 @@ def opener(path):
                     data.append(clientinfo)
                 return data
             except:
-                print("Exception occurred, Please make sure %s is a YAML file" %path)
+                if verbose:
+                    print("Exception occurred, Please make sure %s is a YAML file" %path)
 
     except OSError as reason:
-        print('%s' % reason)
+        if verbose:
+            print('%s' % reason)
 
 def print_cols(argument):
     title_inode = 'Inode number'
@@ -204,11 +212,25 @@ def nfsd4_show():
         help = 'output clients information, --hostname is implied.')
     parser.add_argument('--hostname', action = 'store_true',
         help = 'print hostname of client instead of its ip address. Longer hostnames are truncated.')
+    parser.add_argument('-v', '--verbose', action = 'store_true',
+        help = 'Verbose operation, show debug messages.')
+    parser.add_argument('-f', '--file', nargs='+', type = str, metavar='',
+        help = 'pass client states file, provided that info file resides in the same directory.')
     parser.add_argument('-q', '--quiet', action = 'store_true',
         help = 'don\'t print the header information')
 
     args = parser.parse_args()
-    paths = getpaths()
+
+    global verbose
+    verbose = False
+    if args.verbose:
+        verbose = True
+
+    if args.file:
+        paths = args.file
+    else:
+        paths = getpaths()
+
     p = mp.Pool(mp.cpu_count(), init_worker)
     try:
         result = p.map(opener, paths)
