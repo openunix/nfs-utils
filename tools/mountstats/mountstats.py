@@ -225,7 +225,12 @@ Nfsv4ops = [
     'ALLOCATE',
     'DEALLOCATE',
     'LAYOUTSTATS',
-    'CLONE'
+    'CLONE',
+    'COPY',
+    'OFFLOAD_CANCEL',
+    'LOOKUPP',
+    'LAYOUTERROR',
+    'COPY_NOTIFY'
 ]
 
 class DeviceData:
