@@ -322,11 +322,11 @@ Equivalent to
 .TP
 .B context-timeout
 Equivalent to
-.BR -T .
+.BR -t .
 .TP
 .B rpc-timeout
 Equivalent to
-.BR -t .
+.BR -T .
 .TP
 .B keytab-file
 Equivalent to
