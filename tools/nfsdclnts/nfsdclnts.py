@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/python3
 # -*- python-mode -*-
 '''
     Copyright (C) 2020
