@@ -57,7 +57,7 @@ enum nfsd_fsid {
 };
 
 #undef is_mountpoint
-static int is_mountpoint(char *path)
+static int is_mountpoint(const char *path)
 {
 	return check_is_mountpoint(path, nfsd_path_lstat);
 }

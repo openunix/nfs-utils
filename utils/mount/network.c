@@ -1268,14 +1268,14 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
 int
 nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *version)
 {
-	char *version_key, *version_val, *cptr;
+	char *version_key, *version_val = NULL, *cptr;
 	int i, found = 0;
 
 	version->v_mode = V_DEFAULT;
 
 	for (i = 0; nfs_version_opttbl[i]; i++) {
 		if (po_contains_prefix(options, nfs_version_opttbl[i],
-								&version_key) == PO_FOUND) {
+				       &version_key) == PO_FOUND) {
 			found++;
 			break;
 		}

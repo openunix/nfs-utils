@@ -638,13 +638,12 @@ my_am_cflags="\
  -Werror=parentheses \
  -Werror=aggregate-return \
  -Werror=unused-result \
- -Wno-cast-function-type \
  -fno-strict-aliasing \
 "
 
 AC_DEFUN([CHECK_CCSUPPORT], [
   my_save_cflags="$CFLAGS"
-  CFLAGS=$1
+  CFLAGS="-Werror $1"
   AC_MSG_CHECKING([whether CC supports $1])
   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
     [AC_MSG_RESULT([yes])]
@@ -658,9 +657,10 @@ CHECK_CCSUPPORT([-Werror=format-overflow=2], [flg1])
 CHECK_CCSUPPORT([-Werror=int-conversion], [flg2])
 CHECK_CCSUPPORT([-Werror=incompatible-pointer-types], [flg3])
 CHECK_CCSUPPORT([-Werror=misleading-indentation], [flg4])
+CHECK_CCSUPPORT([-Wno-cast-function-type], [flg5])
 AX_GCC_FUNC_ATTRIBUTE([format])
 
-AC_SUBST([AM_CFLAGS], ["$my_am_cflags $flg1 $flg2 $flg3 $flg4"])
+AC_SUBST([AM_CFLAGS], ["$my_am_cflags $flg1 $flg2 $flg3 $flg4 $flg5"])
 
 # Make sure that $ACLOCAL_FLAGS are used during a rebuild
 AC_SUBST([ACLOCAL_AMFLAGS], ["-I $ac_macro_dir \$(ACLOCAL_FLAGS)"])
