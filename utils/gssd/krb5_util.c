@@ -1226,7 +1226,7 @@ gssd_free_krb5_machine_cred_list(char **list)
  * Called upon exit.  Destroys machine credentials.
  */
 void
-gssd_destroy_krb5_machine_creds(void)
+gssd_destroy_krb5_principals(int destroy_machine_creds)
 {
 	krb5_context context;
 	krb5_error_code code = 0;
@@ -1238,33 +1238,41 @@ gssd_destroy_krb5_machine_creds(void)
 	if (code) {
 		k5err = gssd_k5_err_msg(NULL, code);
 		printerr(0, "ERROR: %s while initializing krb5\n", k5err);
-		goto out;
+		free(k5err);
+		return;
 	}
 
-	for (ple = gssd_k5_kt_princ_list; ple; ple = ple->next) {
-		if (!ple->ccname)
-			continue;
-		if ((code = krb5_cc_resolve(context, ple->ccname, &ccache))) {
-			k5err = gssd_k5_err_msg(context, code);
-			printerr(0, "WARNING: %s while resolving credential "
-				    "cache '%s' for destruction\n", k5err,
-				    ple->ccname);
-			krb5_free_string(context, k5err);
-			k5err = NULL;
-			continue;
+	pthread_mutex_lock(&ple_lock);
+	while (gssd_k5_kt_princ_list) {
+		ple = gssd_k5_kt_princ_list;
+		gssd_k5_kt_princ_list = ple->next;
+
+		if (destroy_machine_creds && ple->ccname) {
+			if ((code = krb5_cc_resolve(context, ple->ccname, &ccache))) {
+				k5err = gssd_k5_err_msg(context, code);
+				printerr(0, "WARNING: %s while resolving credential "
+					    "cache '%s' for destruction\n", k5err,
+					    ple->ccname);
+				free(k5err);
+				k5err = NULL;
+			}
+
+			if (!code && (code = krb5_cc_destroy(context, ccache))) {
+				k5err = gssd_k5_err_msg(context, code);
+				printerr(0, "WARNING: %s while destroying credential "
+					    "cache '%s'\n", k5err, ple->ccname);
+				free(k5err);
+				k5err = NULL;
+			}
 		}
 
-		if ((code = krb5_cc_destroy(context, ccache))) {
-			k5err = gssd_k5_err_msg(context, code);
-			printerr(0, "WARNING: %s while destroying credential "
-				    "cache '%s'\n", k5err, ple->ccname);
-			krb5_free_string(context, k5err);
-			k5err = NULL;
-		}
+		krb5_free_principal(context, ple->princ);
+		free(ple->ccname);
+		free(ple->realm);
+		free(ple);
 	}
+	pthread_mutex_unlock(&ple_lock);
 	krb5_free_context(context);
-  out:
-	krb5_free_string(context, k5err);
 }
 
 /*

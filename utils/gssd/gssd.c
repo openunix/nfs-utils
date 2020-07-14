@@ -91,6 +91,7 @@ char *ccachedir = NULL;
 static bool avoid_dns = true;
 static bool use_gssproxy = false;
 pthread_mutex_t clp_lock = PTHREAD_MUTEX_INITIALIZER;
+static bool signal_received = false;
 static struct event_base *evbase = NULL;
 
 TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
@@ -872,10 +873,15 @@ found:
 static void
 sig_die(int signal)
 {
-	if (root_uses_machine_creds)
-		gssd_destroy_krb5_machine_creds();
+	if (signal_received) {
+		gssd_destroy_krb5_principals(root_uses_machine_creds);
+		printerr(1, "forced exiting on signal %d\n", signal);
+		exit(0);
+	}
+
+	signal_received = true;
 	printerr(1, "exiting on signal %d\n", signal);
-	exit(0);
+	event_base_loopexit(evbase, NULL);
 }
 
 static void
@@ -932,6 +938,7 @@ main(int argc, char *argv[])
 	int rpc_verbosity = 0;
 	int opt;
 	int i;
+	int rc;
 	extern char *optarg;
 	char *progname;
 	struct event *sighup_ev;
@@ -1109,9 +1116,33 @@ main(int argc, char *argv[])
 	gssd_scan();
 	daemon_ready();
 
-	event_base_dispatch(evbase);
+	rc = event_base_dispatch(evbase);
 
-	printerr(0, "ERROR: event_dispatch() returned!\n");
-	return EXIT_FAILURE;
+	printerr(0, "event_dispatch() returned %i!\n", rc);
+
+	gssd_destroy_krb5_principals(root_uses_machine_creds);
+
+	while (!TAILQ_EMPTY(&topdir_list)) {
+		struct topdir *tdi = TAILQ_FIRST(&topdir_list);
+		TAILQ_REMOVE(&topdir_list, tdi, list);
+		while (!TAILQ_EMPTY(&tdi->clnt_list)) {
+			struct clnt_info *clp = TAILQ_FIRST(&tdi->clnt_list);
+			TAILQ_REMOVE(&tdi->clnt_list, clp, list);
+			gssd_destroy_client(clp);
+		}
+		free(tdi);
+	}
+
+	event_free(inotify_ev);
+	event_free(sighup_ev);
+	event_base_free(evbase);
+
+	close(inotify_fd);
+	close(pipefs_fd);
+	closedir(pipefs_dir);
+
+	free(preferred_realm);
+	free(ccachesearch);
+
+	return rc < 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
