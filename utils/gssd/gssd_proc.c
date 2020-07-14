@@ -730,7 +730,7 @@ handle_krb5_upcall(struct clnt_upcall_info *info)
 	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
 
 	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL, NULL);
-	free(info);
+	free_upcall_info(info);
 }
 
 void
@@ -830,6 +830,6 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
 out:
 	free(upcall_str);
 out_nomem:
-	free(info);
+	free_upcall_info(info);
 	return;
 }

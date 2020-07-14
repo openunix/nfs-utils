@@ -63,12 +63,10 @@ extern unsigned int 		context_timeout;
 extern unsigned int rpc_timeout;
 extern char			*preferred_realm;
 extern pthread_mutex_t ple_lock;
-extern pthread_cond_t pcond;
-extern pthread_mutex_t pmutex;
-extern int thread_started;
 
 struct clnt_info {
 	TAILQ_ENTRY(clnt_info)	list;
+	int			refcount;
 	int			wd;
 	bool			scanned;
 	char			*name;
@@ -94,6 +92,7 @@ struct clnt_upcall_info {
 
 void handle_krb5_upcall(struct clnt_upcall_info *clp);
 void handle_gssd_upcall(struct clnt_upcall_info *clp);
+void free_upcall_info(struct clnt_upcall_info *info);
 
 
 #endif /* _RPC_GSSD_H_ */

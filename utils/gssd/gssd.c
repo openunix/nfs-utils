@@ -90,9 +90,7 @@ char *ccachedir = NULL;
 /* Avoid DNS reverse lookups on server names */
 static bool avoid_dns = true;
 static bool use_gssproxy = false;
-int thread_started = false;
-pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t clp_lock = PTHREAD_MUTEX_INITIALIZER;
 
 TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
 
@@ -359,25 +357,51 @@ out:
 	free(port);
 }
 
+/* Actually frees clp and fields that might be used from other
+ * threads if was last reference.
+ */
 static void
-gssd_destroy_client(struct clnt_info *clp)
+gssd_free_client(struct clnt_info *clp)
 {
-	if (clp->krb5_fd >= 0) {
+	int refcnt;
+
+	pthread_mutex_lock(&clp_lock);
+	refcnt = --clp->refcount;
+	pthread_mutex_unlock(&clp_lock);
+	if (refcnt > 0)
+		return;
+
+	printerr(3, "freeing client %s\n", clp->relpath);
+
+	if (clp->krb5_fd >= 0)
 		close(clp->krb5_fd);
-		event_del(&clp->krb5_ev);
-	}
 
-	if (clp->gssd_fd >= 0) {
+	if (clp->gssd_fd >= 0)
 		close(clp->gssd_fd);
-		event_del(&clp->gssd_ev);
-	}
 
-	inotify_rm_watch(inotify_fd, clp->wd);
 	free(clp->relpath);
 	free(clp->servicename);
 	free(clp->servername);
 	free(clp->protocol);
 	free(clp);
+}
+
+/* Called when removing from clnt_list to tear down event handling.
+ * Will then free clp if was last reference.
+ */
+static void
+gssd_destroy_client(struct clnt_info *clp)
+{
+	printerr(3, "destroying client %s\n", clp->relpath);
+
+	if (clp->krb5_fd >= 0)
+		event_del(&clp->krb5_ev);
+
+	if (clp->gssd_fd >= 0)
+		event_del(&clp->gssd_ev);
+
+	inotify_rm_watch(inotify_fd, clp->wd);
+	gssd_free_client(clp);
 }
 
 static void gssd_scan(void);
@@ -416,9 +440,19 @@ static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
 	info = malloc(sizeof(struct clnt_upcall_info));
 	if (info == NULL)
 		return NULL;
+
+	pthread_mutex_lock(&clp_lock);
+	clp->refcount++;
+	pthread_mutex_unlock(&clp_lock);
 	info->clp = clp;
 
 	return info;
+}
+
+void free_upcall_info(struct clnt_upcall_info *info)
+{
+	gssd_free_client(info->clp);
+	free(info);
 }
 
 /* For each upcall read the upcall info into the buffer, then create a
@@ -438,13 +472,13 @@ gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
 	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
 	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
 		printerr(0, "WARNING: %s: failed reading request\n", __func__);
-		free(info);
+		free_upcall_info(info);
 		return;
 	}
 	info->lbuf[info->lbuflen-1] = 0;
 
 	if (start_upcall_thread(handle_gssd_upcall, info))
-		free(info);
+		free_upcall_info(info);
 }
 
 static void
@@ -461,12 +495,12 @@ gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
 			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
 		printerr(0, "WARNING: %s: failed reading uid from krb5 "
 			 "upcall pipe: %s\n", __func__, strerror(errno));
-		free(info);
+		free_upcall_info(info);
 		return;
 	}
 
 	if (start_upcall_thread(handle_krb5_upcall, info))
-		free(info);
+		free_upcall_info(info);
 }
 
 static struct clnt_info *
@@ -501,6 +535,7 @@ gssd_get_clnt(struct topdir *tdi, const char *name)
 	clp->name = clp->relpath + strlen(tdi->name) + 1;
 	clp->krb5_fd = -1;
 	clp->gssd_fd = -1;
+	clp->refcount = 1;
 
 	TAILQ_INSERT_HEAD(&tdi->clnt_list, clp, list);
 	return clp;
@@ -651,7 +686,7 @@ gssd_scan_topdir(const char *name)
 		if (clp->scanned)
 			continue;
 
-		printerr(3, "destroying client %s\n", clp->relpath);
+		printerr(3, "orphaned client %s\n", clp->relpath);
 		saveprev = clp->list.tqe_prev;
 		TAILQ_REMOVE(&tdi->clnt_list, clp, list);
 		gssd_destroy_client(clp);
