@@ -24,7 +24,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <errno.h>
-#include <event.h>
+#include <event2/event.h>
 #include <stdbool.h>
 #include <getopt.h>
 #include <string.h>
@@ -66,7 +66,8 @@
 static char pipefs_dir[PATH_MAX] = DEFAULT_PIPEFS_DIR;
 static char pipepath[PATH_MAX];
 static int 		inotify_fd = -1;
-static struct event	pipedir_event;
+static struct event	 *pipedir_event;
+static struct event_base *evbase;
 static bool old_kernel = false;
 
 uint64_t current_epoch;
@@ -149,13 +150,15 @@ cld_pipe_open(struct cld_client *clnt)
 		return -errno;
 	}
 
-	if (event_initialized(&clnt->cl_event))
-		event_del(&clnt->cl_event);
+	if (clnt->cl_event && event_initialized(clnt->cl_event)) {
+		event_del(clnt->cl_event);
+		event_free(clnt->cl_event);
+	}
 	if (clnt->cl_fd >= 0)
 		close(clnt->cl_fd);
 
 	clnt->cl_fd = fd;
-	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
+	clnt->cl_event = event_new(evbase, clnt->cl_fd, EV_READ, cldcb, clnt);
 	/* event_add is done by the caller */
 	return 0;
 }
@@ -208,7 +211,7 @@ cld_inotify_cb(int UNUSED(fd), short which, void *data)
 	switch (ret) {
 	case 0:
 		/* readd the event for the cl_event pipe */
-		event_add(&clnt->cl_event, NULL);
+		event_add(clnt->cl_event, NULL);
 		break;
 	case -ENOENT:
 		/* pipe must have disappeared, wait for it to come back */
@@ -221,7 +224,7 @@ cld_inotify_cb(int UNUSED(fd), short which, void *data)
 	}
 
 out:
-	event_add(&pipedir_event, NULL);
+	event_add(pipedir_event, NULL);
 	free(dirc);
 }
 
@@ -286,7 +289,7 @@ cld_pipe_init(struct cld_client *clnt)
 	switch (ret) {
 	case 0:
 		/* add the event and we're good to go */
-		event_add(&clnt->cl_event, NULL);
+		event_add(clnt->cl_event, NULL);
 		break;
 	case -ENOENT:
 		/* ignore this error -- cld_inotify_cb will handle it */
@@ -299,8 +302,8 @@ cld_pipe_init(struct cld_client *clnt)
 	}
 
 	/* set event for inotify read */
-	event_set(&pipedir_event, inotify_fd, EV_READ, cld_inotify_cb, clnt);
-	event_add(&pipedir_event, NULL);
+	pipedir_event = event_new(evbase, inotify_fd, EV_READ, cld_inotify_cb, clnt);
+	event_add(pipedir_event, NULL);
 out:
 	return ret;
 }
@@ -737,7 +740,7 @@ cldcb(int UNUSED(fd), short which, void *data)
 		cld_not_implemented(clnt);
 	}
 out:
-	event_add(&clnt->cl_event, NULL);
+	event_add(clnt->cl_event, NULL);
 }
 
 int
@@ -762,7 +765,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 
-	event_init();
+	evbase = event_base_new();
 	xlog_syslog(0);
 	xlog_stderr(1);
 
@@ -860,7 +863,7 @@ main(int argc, char **argv)
 		goto out;
 
 	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
-	rc = event_dispatch();
+	rc = event_base_dispatch(evbase);
 	if (rc < 0)
 		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
 

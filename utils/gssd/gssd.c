@@ -64,7 +64,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <netdb.h>
-#include <event.h>
+#include <event2/event.h>
 
 #include "gssd.h"
 #include "err_util.h"
@@ -77,7 +77,7 @@ static char *pipefs_path = GSSD_PIPEFS_DIR;
 static DIR *pipefs_dir;
 static int pipefs_fd;
 static int inotify_fd;
-struct event inotify_ev;
+struct event *inotify_ev;
 
 char *keytabfile = GSSD_DEFAULT_KEYTAB_FILE;
 char **ccachesearch;
@@ -91,6 +91,7 @@ char *ccachedir = NULL;
 static bool avoid_dns = true;
 static bool use_gssproxy = false;
 pthread_mutex_t clp_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct event_base *evbase = NULL;
 
 TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
 
@@ -394,11 +395,17 @@ gssd_destroy_client(struct clnt_info *clp)
 {
 	printerr(3, "destroying client %s\n", clp->relpath);
 
-	if (clp->krb5_fd >= 0)
-		event_del(&clp->krb5_ev);
+	if (clp->krb5_ev) {
+		event_del(clp->krb5_ev);
+		event_free(clp->krb5_ev);
+		clp->krb5_ev = NULL;
+	}
 
-	if (clp->gssd_fd >= 0)
-		event_del(&clp->gssd_ev);
+	if (clp->gssd_ev) {
+		event_del(clp->gssd_ev);
+		event_free(clp->gssd_ev);
+		clp->gssd_ev = NULL;
+	}
 
 	inotify_rm_watch(inotify_fd, clp->wd);
 	gssd_free_client(clp);
@@ -571,15 +578,15 @@ gssd_scan_clnt(struct clnt_info *clp)
 		clp->krb5_fd = openat(clntfd, "krb5", O_RDWR | O_NONBLOCK);
 
 	if (gssd_was_closed && clp->gssd_fd >= 0) {
-		event_set(&clp->gssd_ev, clp->gssd_fd, EV_READ | EV_PERSIST,
-			  gssd_clnt_gssd_cb, clp);
-		event_add(&clp->gssd_ev, NULL);
+		clp->gssd_ev = event_new(evbase, clp->gssd_fd, EV_READ | EV_PERSIST,
+					 gssd_clnt_gssd_cb, clp);
+		event_add(clp->gssd_ev, NULL);
 	}
 
 	if (krb5_was_closed && clp->krb5_fd >= 0) {
-		event_set(&clp->krb5_ev, clp->krb5_fd, EV_READ | EV_PERSIST,
-			  gssd_clnt_krb5_cb, clp);
-		event_add(&clp->krb5_ev, NULL);
+		clp->krb5_ev = event_new(evbase, clp->krb5_fd, EV_READ | EV_PERSIST,
+					 gssd_clnt_krb5_cb, clp);
+		event_add(clp->krb5_ev, NULL);
 	}
 
 	if (clp->krb5_fd == -1 && clp->gssd_fd == -1)
@@ -783,12 +790,16 @@ gssd_inotify_clnt(struct topdir *tdi, struct clnt_info *clp, const struct inotif
 	} else if (ev->mask & IN_DELETE) {
 		if (!strcmp(ev->name, "gssd") && clp->gssd_fd >= 0) {
 			close(clp->gssd_fd);
-			event_del(&clp->gssd_ev);
+			event_del(clp->gssd_ev);
+			event_free(clp->gssd_ev);
+			clp->gssd_ev = NULL;
 			clp->gssd_fd = -1;
 
 		} else if (!strcmp(ev->name, "krb5") && clp->krb5_fd >= 0) {
 			close(clp->krb5_fd);
-			event_del(&clp->krb5_ev);
+			event_del(clp->krb5_ev);
+			event_free(clp->krb5_ev);
+			clp->krb5_ev = NULL;
 			clp->krb5_fd = -1;
 		}
 
@@ -923,7 +934,7 @@ main(int argc, char *argv[])
 	int i;
 	extern char *optarg;
 	char *progname;
-	struct event sighup_ev;
+	struct event *sighup_ev;
 
 	read_gss_conf();
 
@@ -1062,7 +1073,11 @@ main(int argc, char *argv[])
 	if (gssd_check_mechs() != 0)
 		errx(1, "Problem with gssapi library");
 
-	event_init();
+	evbase = event_base_new();
+	if (!evbase) {
+		printerr(0, "ERROR: failed to create event base\n");
+		exit(EXIT_FAILURE);
+	}
 
 	pipefs_dir = opendir(pipefs_path);
 	if (!pipefs_dir) {
@@ -1084,16 +1099,17 @@ main(int argc, char *argv[])
 
 	signal(SIGINT, sig_die);
 	signal(SIGTERM, sig_die);
-	signal_set(&sighup_ev, SIGHUP, gssd_scan_cb, NULL);
-	signal_add(&sighup_ev, NULL);
-	event_set(&inotify_ev, inotify_fd, EV_READ | EV_PERSIST, gssd_inotify_cb, NULL);
-	event_add(&inotify_ev, NULL);
+	sighup_ev = evsignal_new(evbase, SIGHUP, gssd_scan_cb, NULL);
+	evsignal_add(sighup_ev, NULL);
+	inotify_ev = event_new(evbase, inotify_fd, EV_READ | EV_PERSIST,
+			       gssd_inotify_cb, NULL);
+	event_add(inotify_ev, NULL);
 
 	TAILQ_INIT(&topdir_list);
 	gssd_scan();
 	daemon_ready();
 
-	event_dispatch();
+	event_base_dispatch(evbase);
 
 	printerr(0, "ERROR: event_dispatch() returned!\n");
 	return EXIT_FAILURE;
