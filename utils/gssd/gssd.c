@@ -520,6 +520,8 @@ gssd_get_clnt(struct topdir *tdi, const char *name)
 		if (!strcmp(clp->name, name))
 			return clp;
 
+	printerr(3, "creating client %s/%s\n", tdi->name, name);
+
 	clp = calloc(1, sizeof(struct clnt_info));
 	if (!clp) {
 		printerr(0, "ERROR: can't malloc clnt_info: %s\n",
@@ -560,6 +562,8 @@ gssd_scan_clnt(struct clnt_info *clp)
 	int clntfd;
 	bool gssd_was_closed;
 	bool krb5_was_closed;
+
+	printerr(3, "scanning client %s\n", clp->relpath);
 
 	gssd_was_closed = clp->gssd_fd < 0 ? true : false;
 	krb5_was_closed = clp->krb5_fd < 0 ? true : false;
