@@ -165,7 +165,7 @@ static int select_krb5_ccache(const struct dirent *d);
 static int gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
 		const char **cctype, struct dirent **d);
 static int gssd_get_single_krb5_cred(krb5_context context,
-		krb5_keytab kt, struct gssd_k5_kt_princ *ple, int nocache);
+		krb5_keytab kt, struct gssd_k5_kt_princ *ple);
 static int query_krb5_ccache(const char* cred_cache, char **ret_princname,
 		char **ret_realm);
 
@@ -380,8 +380,7 @@ gssd_check_if_cc_exists(struct gssd_k5_kt_princ *ple)
 static int
 gssd_get_single_krb5_cred(krb5_context context,
 			  krb5_keytab kt,
-			  struct gssd_k5_kt_princ *ple,
-			  int nocache)
+			  struct gssd_k5_kt_princ *ple)
 {
 #ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
 	krb5_get_init_creds_opt *init_opts = NULL;
@@ -398,10 +397,11 @@ gssd_get_single_krb5_cred(krb5_context context,
 	char *cache_type;
 	char *pname = NULL;
 	char *k5err = NULL;
+	int nocache = 0;
 
 	memset(&my_creds, 0, sizeof(my_creds));
 
-	if (!nocache && !use_memcache)
+	if (!use_memcache)
 		nocache = gssd_check_if_cc_exists(ple);
 	/*
 	 * Workaround for clock skew among NFS server, NFS client and KDC
@@ -1199,7 +1199,7 @@ gssd_refresh_krb5_machine_credential_internal(char *hostname,
 			goto out_free_kt;
 		}
 	}
-	retval = gssd_get_single_krb5_cred(context, kt, ple, 0);
+	retval = gssd_get_single_krb5_cred(context, kt, ple);
 out_free_kt:
 	krb5_kt_close(context, kt);
 out_free_context:
