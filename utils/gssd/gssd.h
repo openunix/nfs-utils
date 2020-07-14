@@ -62,7 +62,6 @@ extern int			root_uses_machine_creds;
 extern unsigned int 		context_timeout;
 extern unsigned int rpc_timeout;
 extern char			*preferred_realm;
-extern pthread_mutex_t ple_lock;
 
 struct clnt_info {
 	TAILQ_ENTRY(clnt_info)	list;

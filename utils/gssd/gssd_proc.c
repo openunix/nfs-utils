@@ -548,7 +548,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid,
 		uid, tgtname);
 
 	do {
-		gssd_refresh_krb5_machine_credential(clp->servername, NULL,
+		gssd_refresh_krb5_machine_credential(clp->servername,
 						     service, srchost);
 	/*
 	 * Get a list of credential cache names and try each
