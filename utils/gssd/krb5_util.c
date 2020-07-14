@@ -757,6 +757,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
 		goto out;
 	}
 
+	printerr(4, "Scanning keytab for %s/*@%s\n", service, realm);
 	while ((code = krb5_kt_next_entry(context, kt, kte, &cursor)) == 0) {
 		if ((code = krb5_unparse_name(context, kte->principal,
 					      &pname))) {
@@ -853,42 +854,43 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 		goto out;
 
 	/* Get full local hostname */
-	if (srchost) {
+	if (srchost && strcmp(srchost, "*") != 0) {
 		strcpy(myhostname, srchost);
-	} else if (gethostname(myhostname, sizeof(myhostname)) == -1) {
-		retval = errno;
-		k5err = gssd_k5_err_msg(context, retval);
-		printerr(1, "%s while getting local hostname\n", k5err);
-		goto out;
-	}
-
-	/* Compute the active directory machine name HOST$ */
-	krb5_appdefault_string(context, "nfs", NULL, "ad_principal_name", 
-		notsetstr, &adhostoverride);
-	if (strcmp(adhostoverride, notsetstr) != 0) {
-	        printerr (1, 
-				"AD host string overridden with \"%s\" from appdefaults\n", 
-				adhostoverride);
-	        /* No overflow: Windows cannot handle strings longer than 19 chars */
-	        strcpy(myhostad, adhostoverride);
-	} else {
 	        strcpy(myhostad, myhostname);
-	        for (i = 0; myhostad[i] != 0; ++i) {
-	          if (myhostad[i] == '.') break;
-	        }
-	        myhostad[i] = '$';
-	        myhostad[i+1] = 0;
-	}
-	if (adhostoverride)
-		krb5_free_string(context, adhostoverride);
-
-	if (!srchost) {
-		retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
+	} else {
+		/* Borrow myhostad for gethostname(), we need it later anyways */
+		if (gethostname(myhostad, sizeof(myhostad)-1) == -1) {
+			retval = errno;
+			k5err = gssd_k5_err_msg(context, retval);
+			printerr(1, "%s while getting local hostname\n", k5err);
+			goto out;
+		}
+		retval = get_full_hostname(myhostad, myhostname, sizeof(myhostname));
 		if (retval) {
 			/* Don't use myhostname */
 			myhostname[0] = 0;
 		}
 	}
+
+	/* Compute the active directory machine name HOST$ */
+	krb5_appdefault_string(context, "nfs", NULL, "ad_principal_name",
+		notsetstr, &adhostoverride);
+	if (strcmp(adhostoverride, notsetstr) != 0) {
+		printerr (1,
+				"AD host string overridden with \"%s\" from appdefaults\n",
+				adhostoverride);
+		/* No overflow: Windows cannot handle strings longer than 19 chars */
+		strcpy(myhostad, adhostoverride);
+	} else {
+		/* In this case, it's been pre-filled above */
+		for (i = 0; myhostad[i] != 0; ++i) {
+			if (myhostad[i] == '.') break;
+		}
+		myhostad[i] = '$';
+		myhostad[i+1] = 0;
+	}
+	if (adhostoverride)
+		krb5_free_string(context, adhostoverride);
 
 	code = krb5_get_default_realm(context, &default_realm);
 	if (code) {
