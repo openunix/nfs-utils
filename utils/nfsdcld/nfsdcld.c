@@ -334,6 +334,7 @@ cld_check_grace_period(void)
 	if (read(fd, &c, 1) < 0) {
 		xlog(L_WARNING, "Unable to read from %s: %m",
 			NFSD_END_GRACE_FILE);
+		close(fd);
 		return 1;
 	}
 	close(fd);

@@ -379,7 +379,7 @@ sqlite_maindb_init_v4(void)
 				&err);
 	if (ret != SQLITE_OK) {
 		xlog(L_ERROR, "Unable to begin transaction: %s", err);
-		return ret;
+		goto out;
 	}
 
 	/*

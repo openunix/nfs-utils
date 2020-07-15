@@ -60,6 +60,7 @@ legacy_load_clients_from_recdir(int *num_records)
 	}
 	if (read(fd, recdirname, PATH_MAX) < 0) {
 		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
+		close(fd);
 		return;
 	}
 	close(fd);
@@ -135,6 +136,7 @@ legacy_clear_recdir(void)
 	}
 	if (read(fd, recdirname, PATH_MAX) < 0) {
 		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
+		close(fd);
 		return;
 	}
 	close(fd);
