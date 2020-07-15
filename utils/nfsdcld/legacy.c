@@ -50,7 +50,6 @@ legacy_load_clients_from_recdir(int *num_records)
 	struct dirent *entry;
 	char recdirname[PATH_MAX];
 	char buf[NFS4_OPAQUE_LIMIT];
-	struct stat st;
 	char *nl;
 
 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
@@ -69,15 +68,6 @@ legacy_load_clients_from_recdir(int *num_records)
 	if (!nl)
 		return;
 	*nl = '\0';
-	if (stat(recdirname, &st) < 0) {
-		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
-		return;
-	}
-	if (!S_ISDIR(st.st_mode)) {
-		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
-				, st.st_mode);
-		return;
-	}
 	v4recovery = opendir(recdirname);
 	if (!v4recovery)
 		return;
@@ -126,7 +116,6 @@ legacy_clear_recdir(void)
 	struct dirent *entry;
 	char recdirname[PATH_MAX];
 	char dirname[PATH_MAX];
-	struct stat st;
 	char *nl;
 
 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
@@ -145,15 +134,6 @@ legacy_clear_recdir(void)
 	if (!nl)
 		return;
 	*nl = '\0';
-	if (stat(recdirname, &st) < 0) {
-		xlog(D_GENERAL, "Unable to stat %s: %d", recdirname, errno);
-		return;
-	}
-	if (!S_ISDIR(st.st_mode)) {
-		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdirname
-				, st.st_mode);
-		return;
-	}
 	v4recovery = opendir(recdirname);
 	if (!v4recovery)
 		return;
