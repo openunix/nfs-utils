@@ -48,7 +48,7 @@ legacy_load_clients_from_recdir(int *num_records)
 	int fd;
 	DIR *v4recovery;
 	struct dirent *entry;
-	char recdirname[PATH_MAX];
+	char recdirname[PATH_MAX+1];
 	char buf[NFS4_OPAQUE_LIMIT];
 	char *nl;
 
@@ -64,6 +64,7 @@ legacy_load_clients_from_recdir(int *num_records)
 	}
 	close(fd);
 	/* the output from the proc file isn't null-terminated */
+	recdirname[PATH_MAX] = '\0';
 	nl = strchr(recdirname, '\n');
 	if (!nl)
 		return;
@@ -114,7 +115,7 @@ legacy_clear_recdir(void)
 	int fd;
 	DIR *v4recovery;
 	struct dirent *entry;
-	char recdirname[PATH_MAX];
+	char recdirname[PATH_MAX+1];
 	char dirname[PATH_MAX];
 	char *nl;
 
@@ -130,6 +131,7 @@ legacy_clear_recdir(void)
 	}
 	close(fd);
 	/* the output from the proc file isn't null-terminated */
+	recdirname[PATH_MAX] = '\0';
 	nl = strchr(recdirname, '\n');
 	if (!nl)
 		return;
