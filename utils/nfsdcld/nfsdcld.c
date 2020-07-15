@@ -255,11 +255,12 @@ cld_inotify_setup(void)
 		xlog_err("%s: inotify_add_watch failed: %m", __func__);
 		ret = -errno;
 		goto out_err;
-	}
+	} else
+		ret = 0;
 
 out_free:
 	free(dirc);
-	return 0;
+	return ret;
 out_err:
 	close(inotify_fd);
 	goto out_free;
@@ -799,6 +800,7 @@ main(int argc, char **argv)
 			break;
 		default:
 			usage(progname);
+			free(progname);
 			return 0;
 		}
 	}

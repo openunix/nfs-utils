@@ -830,7 +830,6 @@ sqlite_prepare_dbh(const char *topdir)
 	switch (ret) {
 	case CLD_SQLITE_LATEST_SCHEMA_VERSION:
 		/* DB is already set up. Do nothing */
-		ret = 0;
 		break;
 	case 3:
 		/* Old DB -- update to new schema */
@@ -867,6 +866,8 @@ sqlite_prepare_dbh(const char *topdir)
 	}
 
 	ret = sqlite_startup_query_grace();
+	if (ret)
+		goto out_close;
 
 	ret = sqlite_query_first_time(&first_time);
 	if (ret)
