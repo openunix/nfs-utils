@@ -51,18 +51,19 @@ legacy_load_clients_from_recdir(int *num_records)
 	char recdirname[PATH_MAX+1];
 	char buf[NFS4_OPAQUE_LIMIT];
 	char *nl;
+	ssize_t n;
 
 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
 	if (fd < 0) {
 		xlog(D_GENERAL, "Unable to open %s: %m", NFSD_RECDIR_FILE);
 		return;
 	}
-	if (read(fd, recdirname, PATH_MAX) < 0) {
+	n = read(fd, recdirname, PATH_MAX);
+	close(fd);
+	if (n < 0) {
 		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
-		close(fd);
 		return;
 	}
-	close(fd);
 	/* the output from the proc file isn't null-terminated */
 	recdirname[PATH_MAX] = '\0';
 	nl = strchr(recdirname, '\n');
@@ -118,18 +119,19 @@ legacy_clear_recdir(void)
 	char recdirname[PATH_MAX+1];
 	char dirname[PATH_MAX];
 	char *nl;
+	ssize_t n;
 
 	fd = open(NFSD_RECDIR_FILE, O_RDONLY);
 	if (fd < 0) {
 		xlog(D_GENERAL, "Unable to open %s: %m", NFSD_RECDIR_FILE);
 		return;
 	}
-	if (read(fd, recdirname, PATH_MAX) < 0) {
+	n = read(fd, recdirname, PATH_MAX);
+	close(fd);
+	if (n < 0) {
 		xlog(D_GENERAL, "Unable to read from %s: %m", NFSD_RECDIR_FILE);
-		close(fd);
 		return;
 	}
-	close(fd);
 	/* the output from the proc file isn't null-terminated */
 	recdirname[PATH_MAX] = '\0';
 	nl = strchr(recdirname, '\n');
