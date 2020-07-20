@@ -67,9 +67,14 @@
 #include "misc.h"
 #include "svcgssd_krb5.h"
 
-struct state_paths etab;
+struct state_paths etab; /* from cacheio.c */
 static bool signal_received = false;
 static struct event_base *evbase = NULL;
+static int nullrpc_fd = -1;
+static struct event *nullrpc_event = NULL;
+static struct event *wait_event = NULL;
+
+#define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
 
 static void
 sig_die(int signal)
@@ -118,6 +123,66 @@ svcgssd_nullrpc_cb(int fd, short UNUSED(which), void *UNUSED(data))
 	handle_nullreq(lbuf);
 }
 
+static void
+svcgssd_nullrpc_close(void)
+{
+	if (nullrpc_event) {
+		printerr(2, "closing nullrpc channel %s\n", NULLRPC_FILE);
+		event_free(nullrpc_event);
+		nullrpc_event = NULL;
+	}
+	if (nullrpc_fd != -1) {
+		close(nullrpc_fd);
+		nullrpc_fd = -1;
+	}
+}
+
+static void
+svcgssd_nullrpc_open(void)
+{
+	nullrpc_fd = open(NULLRPC_FILE, O_RDWR);
+	if (nullrpc_fd < 0) {
+		printerr(0, "failed to open %s: %s\n",
+			 NULLRPC_FILE, strerror(errno));
+		return;
+	}
+	nullrpc_event = event_new(evbase, nullrpc_fd, EV_READ | EV_PERSIST,
+				  svcgssd_nullrpc_cb, NULL);
+	if (!nullrpc_event) {
+		printerr(0, "failed to create event for %s: %s\n",
+			 NULLRPC_FILE, strerror(errno));
+		close(nullrpc_fd);
+		nullrpc_fd = -1;
+		return;
+	}
+	event_add(nullrpc_event, NULL);
+	printerr(2, "opened nullrpc channel %s\n", NULLRPC_FILE);
+}
+
+static void
+svcgssd_wait_cb(int UNUSED(fd), short UNUSED(which), void *UNUSED(data))
+{
+	static int times = 0;
+	int rc;
+
+	rc = access(NULLRPC_FILE, R_OK | W_OK);
+	if (rc != 0) {
+		struct timeval t = {times < 10 ? 1 : 10, 0};
+		times++;
+		if (times % 30 == 0)
+			printerr(2, "still waiting for nullrpc channel: %s\n",
+				NULLRPC_FILE);
+		evtimer_add(wait_event, &t);
+		return;
+	}
+
+	svcgssd_nullrpc_open();
+	event_free(wait_event);
+	wait_event = NULL;
+}
+
+
+
 int
 main(int argc, char *argv[])
 {
@@ -132,8 +197,6 @@ main(int argc, char *argv[])
 	char *principal = NULL;
 	char *s;
 	int rc;
-	int nullrpc_fd = -1;
-	struct event *nullrpc_event = NULL;
 
 	conf_init_file(NFS_CONFFILE);
 
@@ -250,22 +313,19 @@ main(int argc, char *argv[])
 		}
 	}
 
-#define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
-
-	nullrpc_fd = open(NULLRPC_FILE, O_RDWR);
-	if (nullrpc_fd < 0) {
-		printerr(0, "failed to open %s: %s\n",
-			 NULLRPC_FILE, strerror(errno));
-		exit(1);
-	}
-	nullrpc_event = event_new(evbase, nullrpc_fd, EV_READ | EV_PERSIST,
-				  svcgssd_nullrpc_cb, NULL);
+	svcgssd_nullrpc_open();
 	if (!nullrpc_event) {
-		printerr(0, "failed to create event for %s: %s\n",
-			 NULLRPC_FILE, strerror(errno));
-		exit(1);
+		struct timeval t = {1, 0};
+
+		printerr(2, "waiting for nullrpc channel to appear\n");
+		wait_event = evtimer_new(evbase, svcgssd_wait_cb, NULL);
+		if (!wait_event) {
+			printerr(0, "ERROR: failed to create wait event: %s\n",
+				 strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		evtimer_add(wait_event, &t);
 	}
-	event_add(nullrpc_event, NULL);
 
 	daemon_ready();
 
@@ -275,8 +335,9 @@ main(int argc, char *argv[])
 	if (rc < 0)
 		printerr(0, "event_base_dispatch() returned %i!\n", rc);
 
-	event_free(nullrpc_event);
-	close(nullrpc_fd);
+	svcgssd_nullrpc_close();
+	if (wait_event)
+		event_free(wait_event);
 
 	event_base_free(evbase);
 
