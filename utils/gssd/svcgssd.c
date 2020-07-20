@@ -65,6 +65,7 @@
 #include "err_util.h"
 #include "conffile.h"
 #include "misc.h"
+#include "svcgssd_krb5.h"
 
 struct state_paths etab;
 static bool signal_received = false;
@@ -147,6 +148,9 @@ main(int argc, char *argv[])
 	verbosity = conf_get_num("svcgssd", "Verbosity", verbosity);
 	rpc_verbosity = conf_get_num("svcgssd", "RPC-Verbosity", rpc_verbosity);
 	idmap_verbosity = conf_get_num("svcgssd", "IDMAP-Verbosity", idmap_verbosity);
+
+	/* We don't need the config anymore */
+	conf_cleanup();
 
 	while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
 		switch (opt) {
@@ -275,6 +279,10 @@ main(int argc, char *argv[])
 	close(nullrpc_fd);
 
 	event_base_free(evbase);
+
+	nfs4_term_name_mapping();
+	svcgssd_free_enctypes();
+	gssd_cleanup();
 
 	return EXIT_SUCCESS;
 }
