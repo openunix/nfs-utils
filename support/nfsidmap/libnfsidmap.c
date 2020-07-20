@@ -496,6 +496,19 @@ out:
 	return ret ? -ENOENT: 0;
 }
 
+void nfs4_term_name_mapping(void)
+{
+	if (nfs4_plugins)
+		unload_plugins(nfs4_plugins);
+	if (gss_plugins)
+		unload_plugins(gss_plugins);
+
+	nfs4_plugins = gss_plugins = NULL;
+
+	free_local_realms();
+	conf_cleanup();
+}
+
 int
 nfs4_get_default_domain(char *UNUSED(server), char *domain, size_t len)
 {
