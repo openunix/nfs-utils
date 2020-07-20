@@ -223,7 +223,8 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
 	int found = 0;
 	struct dirent *best_match_dir = NULL;
 	struct stat best_match_stat, tmp_stat;
-	char buf[PATH_MAX+4+2+256];
+	/* dirname + cctype + d_name + NULL */
+	char buf[PATH_MAX+5+256+1];
 	char *princname = NULL;
 	char *realm = NULL;
 	int score, best_match_score = 0, err = -EACCES;
@@ -1225,7 +1226,8 @@ out:
 int
 gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
 {
-	char			buf[PATH_MAX+2+256], dirname[PATH_MAX];
+				/* dirname + cctype + d_name + NULL */
+	char			buf[PATH_MAX+5+256+1], dirname[PATH_MAX];
 	const char		*cctype;
 	struct dirent		*d;
 	int			err, i, j;
