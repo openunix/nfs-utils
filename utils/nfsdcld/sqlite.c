@@ -1404,3 +1404,18 @@ sqlite_first_time_done(void)
 	sqlite3_free(err);
 	return ret;
 }
+
+/*
+ * Closes all sqlite3 resources and shuts down the library.
+ *
+ */
+void
+sqlite_shutdown(void)
+{
+	if (dbh != NULL) {
+		sqlite3_close(dbh);
+		dbh = NULL;
+	}
+
+	sqlite3_shutdown();
+}

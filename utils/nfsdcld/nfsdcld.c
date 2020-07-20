@@ -27,6 +27,7 @@
 #include <event2/event.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <signal.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -69,6 +70,7 @@ static int 		inotify_fd = -1;
 static struct event	 *pipedir_event;
 static struct event_base *evbase;
 static bool old_kernel = false;
+static bool signal_received = false;
 
 uint64_t current_epoch;
 uint64_t recovery_epoch;
@@ -88,6 +90,19 @@ static struct option longopts[] =
 
 /* forward declarations */
 static void cldcb(int UNUSED(fd), short which, void *data);
+
+static void
+sig_die(int signal)
+{
+	if (signal_received) {
+		xlog(D_GENERAL, "forced exiting on signal %d\n", signal);
+		exit(0);
+	}
+
+	signal_received = true;
+	xlog(D_GENERAL, "exiting on signal %d\n", signal);
+	event_base_loopexit(evbase, NULL);
+}
 
 static void
 usage(char *progname)
@@ -881,14 +896,27 @@ main(int argc, char **argv)
 	if (rc)
 		goto out;
 
+	signal(SIGINT, sig_die);
+	signal(SIGTERM, sig_die);
+
 	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
 	rc = event_base_dispatch(evbase);
 	if (rc < 0)
 		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
 
-	close(clnt.cl_fd);
-	close(inotify_fd);
 out:
+	if (clnt.cl_event)
+		event_free(clnt.cl_event);
+	if (clnt.cl_fd != -1)
+		close(clnt.cl_fd);
+	if (pipedir_event)
+		event_free(pipedir_event);
+	if (inotify_fd != -1)
+		close(inotify_fd);
+
+	event_base_free(evbase);
+	sqlite_shutdown();
+
 	free(progname);
 	return rc;
 }
