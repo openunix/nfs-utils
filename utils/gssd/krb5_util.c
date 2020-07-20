@@ -876,10 +876,10 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 	/* Compute the active directory machine name HOST$ */
 	krb5_appdefault_string(context, "nfs", NULL, "ad_principal_name",
 		notsetstr, &adhostoverride);
-	if (strcmp(adhostoverride, notsetstr) != 0) {
-		printerr (1,
-				"AD host string overridden with \"%s\" from appdefaults\n",
-				adhostoverride);
+	if (adhostoverride && strcmp(adhostoverride, notsetstr) != 0) {
+		printerr(1,
+			 "AD host string overridden with \"%s\" from appdefaults\n",
+			 adhostoverride);
 		/* No overflow: Windows cannot handle strings longer than 19 chars */
 		strcpy(myhostad, adhostoverride);
 	} else {
