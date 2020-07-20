@@ -57,20 +57,30 @@
 #include <string.h>
 #include <signal.h>
 #include <nfsidmap.h>
+#include <event2/event.h>
+
 #include "nfslib.h"
 #include "svcgssd.h"
 #include "gss_util.h"
 #include "err_util.h"
 #include "conffile.h"
+#include "misc.h"
 
 struct state_paths etab;
+static bool signal_received = false;
+static struct event_base *evbase = NULL;
 
 static void
 sig_die(int signal)
 {
-	/* destroy krb5 machine creds */
+	if (signal_received) {
+		/* destroy krb5 machine creds */
+		printerr(1, "forced exiting on signal %d\n", signal);
+		exit(0);
+	}
+	signal_received = true;
 	printerr(1, "exiting on signal %d\n", signal);
-	exit(0);
+	event_base_loopexit(evbase, NULL);
 }
 
 static void
@@ -89,6 +99,24 @@ usage(char *progname)
 	exit(1);
 }
 
+static void
+svcgssd_nullrpc_cb(int fd, short UNUSED(which), void *UNUSED(data))
+{
+	char	lbuf[RPC_CHAN_BUF_SIZE];
+	int	lbuflen = 0;
+
+	printerr(1, "reading null request\n");
+
+	lbuflen = read(fd, lbuf, sizeof(lbuf));
+	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+		printerr(0, "WARNING: handle_nullreq: failed reading request\n");
+		return;
+	}
+	lbuf[lbuflen-1] = 0;
+
+	handle_nullreq(lbuf);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -102,6 +130,9 @@ main(int argc, char *argv[])
 	char *progname;
 	char *principal = NULL;
 	char *s;
+	int rc;
+	int nullrpc_fd = -1;
+	struct event *nullrpc_event = NULL;
 
 	conf_init_file(NFS_CONFFILE);
 
@@ -182,6 +213,12 @@ main(int argc, char *argv[])
 
 	daemon_init(fg);
 
+	evbase = event_base_new();
+	if (!evbase) {
+		printerr(0, "ERROR: failed to create event base: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
 	signal(SIGINT, sig_die);
 	signal(SIGTERM, sig_die);
 	signal(SIGHUP, sig_hup);
@@ -209,10 +246,35 @@ main(int argc, char *argv[])
 		}
 	}
 
+#define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
+
+	nullrpc_fd = open(NULLRPC_FILE, O_RDWR);
+	if (nullrpc_fd < 0) {
+		printerr(0, "failed to open %s: %s\n",
+			 NULLRPC_FILE, strerror(errno));
+		exit(1);
+	}
+	nullrpc_event = event_new(evbase, nullrpc_fd, EV_READ | EV_PERSIST,
+				  svcgssd_nullrpc_cb, NULL);
+	if (!nullrpc_event) {
+		printerr(0, "failed to create event for %s: %s\n",
+			 NULLRPC_FILE, strerror(errno));
+		exit(1);
+	}
+	event_add(nullrpc_event, NULL);
+
 	daemon_ready();
 
 	nfs4_init_name_mapping(NULL); /* XXX: should only do this once */
-	gssd_run();
-	printerr(0, "gssd_run returned!\n");
-	abort();
+
+	rc = event_base_dispatch(evbase);
+	if (rc < 0)
+		printerr(0, "event_base_dispatch() returned %i!\n", rc);
+
+	event_free(nullrpc_event);
+	close(nullrpc_fd);
+
+	event_base_free(evbase);
+
+	return EXIT_SUCCESS;
 }
