@@ -142,12 +142,20 @@ static int
 cld_pipe_open(struct cld_client *clnt)
 {
 	int fd;
+	struct event *ev;
 
 	xlog(D_GENERAL, "%s: opening upcall pipe %s", __func__, pipepath);
 	fd = open(pipepath, O_RDWR, 0);
 	if (fd < 0) {
 		xlog(D_GENERAL, "%s: open of %s failed: %m", __func__, pipepath);
 		return -errno;
+	}
+
+	ev = event_new(evbase, fd, EV_READ, cldcb, clnt);
+	if (ev == NULL) {
+		xlog(D_GENERAL, "%s: failed to create event for %s", __func__, pipepath);
+		close(fd);
+		return -ENOMEM;
 	}
 
 	if (clnt->cl_event && event_initialized(clnt->cl_event)) {
@@ -158,7 +166,7 @@ cld_pipe_open(struct cld_client *clnt)
 		close(clnt->cl_fd);
 
 	clnt->cl_fd = fd;
-	clnt->cl_event = event_new(evbase, clnt->cl_fd, EV_READ, cldcb, clnt);
+	clnt->cl_event = ev;
 	/* event_add is done by the caller */
 	return 0;
 }
@@ -304,6 +312,10 @@ cld_pipe_init(struct cld_client *clnt)
 
 	/* set event for inotify read */
 	pipedir_event = event_new(evbase, inotify_fd, EV_READ, cld_inotify_cb, clnt);
+	if (pipedir_event == NULL) {
+		close(inotify_fd);
+		return -ENOMEM;
+	}
 	event_add(pipedir_event, NULL);
 out:
 	return ret;
@@ -768,6 +780,10 @@ main(int argc, char **argv)
 	}
 
 	evbase = event_base_new();
+	if (evbase == NULL) {
+		fprintf(stderr, "%s: unable to allocate event base.\n", argv[0]);
+		return 1;
+	}
 	xlog_syslog(0);
 	xlog_stderr(1);
 

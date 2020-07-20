@@ -400,13 +400,21 @@ main(int argc, char **argv)
 
 		/* These events are persistent */
 		rootdirev = evsignal_new(evbase, SIGUSR1, dirscancb, &icq);
+		if (rootdirev == NULL)
+			errx(1, "Failed to create SIGUSR1 event.");
 		evsignal_add(rootdirev, NULL);
 		clntdirev = evsignal_new(evbase, SIGUSR2, clntscancb, &icq);
+		if (clntdirev == NULL)
+			errx(1, "Failed to create SIGUSR2 event.");
 		evsignal_add(clntdirev, NULL);
 		svrdirev = evsignal_new(evbase, SIGHUP, svrreopen, NULL);
+		if (svrdirev == NULL)
+			errx(1, "Failed to create SIGHUP event.");
 		evsignal_add(svrdirev, NULL);
 		if ( wd >= 0) {
 			inotifyev = event_new(evbase, inotify_fd, EV_READ, dirscancb, &icq);
+			if (inotifyev == NULL)
+				errx(1, "Failed to create inotify read event.");
 			event_add(inotifyev, NULL);
 		}
 
@@ -414,6 +422,8 @@ main(int argc, char **argv)
 		/* (Delay till start of event_dispatch to avoid possibly losing
 		 * a SIGUSR1 between here and the call to event_dispatch().) */
 		initialize = evtimer_new(evbase, dirscancb, &icq);
+		if (initialize == NULL)
+			errx(1, "Failed to create initialize event.");
 		evtimer_add(initialize, &now);
 	}
 
@@ -768,6 +778,13 @@ nfsdreopen_one(struct idmap_client *ic)
 
 		ic->ic_fd = fd;
 		ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfsdcb, ic);
+		if (ic->ic_event == NULL) {
+			xlog_warn("nfsdreopen: Failed to create event for '%s'",
+				  ic->ic_path);
+			close(ic->ic_fd);
+			ic->ic_fd = -1;
+			return;
+		}
 		event_add(ic->ic_event, NULL);
 	} else {
 		xlog_warn("nfsdreopen: Opening '%s' failed: errno %d (%s)",
@@ -802,6 +819,14 @@ nfsdopenone(struct idmap_client *ic)
 	}
 
 	ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfsdcb, ic);
+	if (ic->ic_event == NULL) {
+		if (verbose > 0)
+			xlog_warn("nfsdopenone: Create event for %s failed",
+				  ic->ic_path);
+		close(ic->ic_fd);
+		ic->ic_fd = -1;
+		return (-1);
+	}
 	event_add(ic->ic_event, NULL);
 
 	if (verbose > 0)
@@ -826,6 +851,13 @@ nfsopen(struct idmap_client *ic)
 		}
 	} else {
 		ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfscb, ic);
+		if (ic->ic_event == NULL) {
+			xlog_warn("nfsdopenone: Create event for %s failed",
+				  ic->ic_path);
+			close(ic->ic_fd);
+			ic->ic_fd = -1;
+			return -1;
+		}
 		event_add(ic->ic_event, NULL);
 		fcntl(ic->ic_dirfd, F_NOTIFY, 0);
 		fcntl(ic->ic_dirfd, F_SETSIG, 0);

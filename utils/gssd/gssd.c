@@ -560,13 +560,8 @@ static int
 gssd_scan_clnt(struct clnt_info *clp)
 {
 	int clntfd;
-	bool gssd_was_closed;
-	bool krb5_was_closed;
 
 	printerr(3, "scanning client %s\n", clp->relpath);
-
-	gssd_was_closed = clp->gssd_fd < 0 ? true : false;
-	krb5_was_closed = clp->krb5_fd < 0 ? true : false;
 
 	clntfd = openat(pipefs_fd, clp->relpath, O_RDONLY);
 	if (clntfd < 0) {
@@ -582,16 +577,30 @@ gssd_scan_clnt(struct clnt_info *clp)
 	if (clp->gssd_fd == -1 && clp->krb5_fd == -1)
 		clp->krb5_fd = openat(clntfd, "krb5", O_RDWR | O_NONBLOCK);
 
-	if (gssd_was_closed && clp->gssd_fd >= 0) {
+	if (!clp->gssd_ev && clp->gssd_fd >= 0) {
 		clp->gssd_ev = event_new(evbase, clp->gssd_fd, EV_READ | EV_PERSIST,
 					 gssd_clnt_gssd_cb, clp);
-		event_add(clp->gssd_ev, NULL);
+		if (!clp->gssd_ev) {
+			printerr(0, "ERROR: %s: can't create gssd event for %s: %s\n",
+				 __FUNCTION__, clp->relpath, strerror(errno));
+			close(clp->gssd_fd);
+			clp->gssd_fd = -1;
+		} else {
+			event_add(clp->gssd_ev, NULL);
+		}
 	}
 
-	if (krb5_was_closed && clp->krb5_fd >= 0) {
+	if (!clp->krb5_ev && clp->krb5_fd >= 0) {
 		clp->krb5_ev = event_new(evbase, clp->krb5_fd, EV_READ | EV_PERSIST,
 					 gssd_clnt_krb5_cb, clp);
-		event_add(clp->krb5_ev, NULL);
+		if (!clp->krb5_ev) {
+			printerr(0, "ERROR: %s: can't create krb5 event for %s: %s\n",
+				 __FUNCTION__, clp->relpath, strerror(errno));
+			close(clp->krb5_fd);
+			clp->krb5_fd = -1;
+		} else {
+			event_add(clp->krb5_ev, NULL);
+		}
 	}
 
 	if (clp->krb5_fd == -1 && clp->gssd_fd == -1)
@@ -1086,7 +1095,7 @@ main(int argc, char *argv[])
 
 	evbase = event_base_new();
 	if (!evbase) {
-		printerr(0, "ERROR: failed to create event base\n");
+		printerr(0, "ERROR: failed to create event base: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1111,9 +1120,17 @@ main(int argc, char *argv[])
 	signal(SIGINT, sig_die);
 	signal(SIGTERM, sig_die);
 	sighup_ev = evsignal_new(evbase, SIGHUP, gssd_scan_cb, NULL);
+	if (!sighup_ev) {
+		printerr(0, "ERROR: failed to create SIGHUP event: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	evsignal_add(sighup_ev, NULL);
 	inotify_ev = event_new(evbase, inotify_fd, EV_READ | EV_PERSIST,
 			       gssd_inotify_cb, NULL);
+	if (!inotify_ev) {
+		printerr(0, "ERROR: failed to create inotify event: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	event_add(inotify_ev, NULL);
 
 	TAILQ_INIT(&topdir_list);
