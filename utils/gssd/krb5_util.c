@@ -855,7 +855,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 		goto out;
 
 	/* Get full local hostname */
-	if (srchost && strcmp(srchost, "*") != 0) {
+	if (srchost) {
 		strcpy(myhostname, srchost);
 	        strcpy(myhostad, myhostname);
 	} else {
