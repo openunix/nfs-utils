@@ -85,8 +85,11 @@ grab_lockfile()
 static void
 release_lockfile()
 {
-	if (_lockfd != -1)
+	if (_lockfd != -1) {
 		lockf(_lockfd, F_ULOCK, 0);
+		close(_lockfd);
+		_lockfd = -1;
+	}
 }
 
 int
@@ -184,6 +187,7 @@ main(int argc, char **argv)
 			xtab_export_read();
 			dump(f_verbose, f_export_format);
 			free_state_path_names(&etab);
+			export_freeall();
 			return 0;
 		}
 	}
@@ -225,6 +229,7 @@ main(int argc, char **argv)
 	xtab_export_write();
 	cache_flush(force_flush);
 	free_state_path_names(&etab);
+	export_freeall();
 
 	return export_errno;
 }
