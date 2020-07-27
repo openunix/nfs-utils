@@ -155,6 +155,7 @@ static void idtonameres(struct idmap_msg *);
 static void nametoidres(struct idmap_msg *);
 
 static int nfsdopen(void);
+static void nfsdclose(void);
 static int nfsdopenone(struct idmap_client *);
 static void nfsdreopen_one(struct idmap_client *);
 static void nfsdreopen(void);
@@ -167,6 +168,20 @@ static char *nobodyuser, *nobodygroup;
 static uid_t nobodyuid;
 static gid_t nobodygid;
 static struct event_base *evbase = NULL;
+static bool signal_received = false;
+
+static void
+sig_die(int signal)
+{
+	if (signal_received) {
+		xlog_warn("forced exiting on signal %d\n", signal);
+		exit(0);
+	}
+
+	signal_received = true;
+	xlog_warn("exiting on signal %d\n", signal);
+	event_base_loopexit(evbase, NULL);
+}
 
 static int
 flush_nfsd_cache(char *path, time_t now)
@@ -210,14 +225,15 @@ main(int argc, char **argv)
 {
 	int wd = -1, opt, fg = 0, nfsdret = -1;
 	struct idmap_clientq icq;
-	struct event *rootdirev, *clntdirev, *svrdirev, *inotifyev;
-	struct event *initialize;
+	struct event *rootdirev = NULL, *clntdirev = NULL,
+		     *svrdirev = NULL, *inotifyev = NULL;
+	struct event *initialize = NULL;
 	struct passwd *pw;
 	struct group *gr;
 	struct stat sb;
 	char *xpipefsdir = NULL;
 	int serverstart = 1, clientstart = 1;
-	int inotify_fd;
+	int inotify_fd = -1;
 	int ret;
 	char *progname;
 	char *conf_path = NULL;
@@ -289,6 +305,9 @@ main(int argc, char **argv)
 		if (conf_get_bool("General", "client-only", false))
 			serverstart = 0;
 	}
+
+	/* Config memory is no longer needed */
+	conf_cleanup();
 
 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
 		switch (opt) {
@@ -398,6 +417,9 @@ main(int argc, char **argv)
 
 		TAILQ_INIT(&icq);
 
+		signal(SIGINT, sig_die);
+		signal(SIGTERM, sig_die);
+
 		/* These events are persistent */
 		rootdirev = evsignal_new(evbase, SIGUSR1, dirscancb, &icq);
 		if (rootdirev == NULL)
@@ -435,7 +457,25 @@ main(int argc, char **argv)
 	if (event_base_dispatch(evbase) < 0)
 		xlog_err("main: event_dispatch returns errno %d (%s)",
 			    errno, strerror(errno));
-	/* NOTREACHED */
+
+	nfs4_term_name_mapping();
+	nfsdclose();
+
+	if (inotifyev)
+		event_free(inotifyev);
+	if (inotify_fd != -1)
+		close(inotify_fd);
+
+	if (initialize)
+		event_free(initialize);
+	if (rootdirev)
+		event_free(rootdirev);
+	if (clntdirev)
+		event_free(clntdirev);
+	if (svrdirev)
+		event_free(svrdirev);
+	event_base_free(evbase);
+
 	return 1;
 }
 
@@ -761,6 +801,19 @@ out:
 }
 
 static void
+nfsdclose_one(struct idmap_client *ic)
+{
+	if (ic->ic_event) {
+		event_free(ic->ic_event);
+		ic->ic_event = NULL;
+	}
+	if (ic->ic_fd != -1) {
+		close(ic->ic_fd);
+		ic->ic_fd = -1;
+	}
+}
+
+static void
 nfsdreopen_one(struct idmap_client *ic)
 {
 	int fd;
@@ -769,12 +822,7 @@ nfsdreopen_one(struct idmap_client *ic)
 		xlog_warn("ReOpening %s", ic->ic_path);
 
 	if ((fd = open(ic->ic_path, O_RDWR, 0)) != -1) {
-		if (ic->ic_event && event_initialized(ic->ic_event)) {
-			event_del(ic->ic_event);
-			event_free(ic->ic_event);
-		}
-		if (ic->ic_fd != -1)
-			close(ic->ic_fd);
+		nfsdclose_one(ic);
 
 		ic->ic_fd = fd;
 		ic->ic_event = event_new(evbase, ic->ic_fd, EV_READ, nfsdcb, ic);
@@ -805,6 +853,13 @@ nfsdopen(void)
 {
 	return ((nfsdopenone(&nfsd_ic[IC_NAMEID]) == 0 &&
 		    nfsdopenone(&nfsd_ic[IC_IDNAME]) == 0) ? 0 : -1);
+}
+
+static void
+nfsdclose(void)
+{
+	nfsdclose_one(&nfsd_ic[IC_NAMEID]);
+	nfsdclose_one(&nfsd_ic[IC_IDNAME]);
 }
 
 static int
