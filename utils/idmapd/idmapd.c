@@ -500,7 +500,8 @@ flush_inotify(int fd)
 		     ptr += sizeof(struct inotify_event) + ev->len) {
 
 			ev = (const struct inotify_event *)ptr;
-			xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
+			if (verbose > 1)
+				xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
 				  ev->wd, ev->mask, ev->len, ev->len ? ev->name : "");
 		}
 	}
