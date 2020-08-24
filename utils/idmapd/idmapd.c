@@ -365,7 +365,7 @@ main(int argc, char **argv)
 	if (evbase == NULL)
 		errx(1, "Failed to create event base.");
 
-	if (verbose > 0)
+	if (verbose > 1)
 		xlog_warn("Expiration time is %d seconds.",
 			     cache_entry_expiration);
 	if (serverstart) {
@@ -500,7 +500,7 @@ flush_inotify(int fd)
 		     ptr += sizeof(struct inotify_event) + ev->len) {
 
 			ev = (const struct inotify_event *)ptr;
-			if (verbose > 1)
+			if (verbose > 2)
 				xlog_warn("pipefs inotify: wd=%i, mask=0x%08x, len=%i, name=%s",
 				  ev->wd, ev->mask, ev->len, ev->len ? ev->name : "");
 		}
@@ -562,7 +562,7 @@ dirscancb(int fd, short UNUSED(which), void *data)
 				goto out;
 			}
 
-			if (verbose > 0)
+			if (verbose > 2)
 				xlog_warn("New client: %s", ic->ic_clid);
 
 			ic->ic_id = "Client";
@@ -585,7 +585,7 @@ dirscancb(int fd, short UNUSED(which), void *data)
 			if (ic->ic_dirfd != -1)
 				close(ic->ic_dirfd);
 			TAILQ_REMOVE(icq, ic, ic_next);
-			if (verbose > 0) {
+			if (verbose > 2) {
 				xlog_warn("Stale client: %s", ic->ic_clid);
 				xlog_warn("\t-> closed %s", ic->ic_path);
 			}
@@ -665,7 +665,7 @@ nfsdcb(int UNUSED(fd), short which, void *data)
 		xlog_warn("nfsdcb: bad type in upcall\n");
 		return;
 	}
-	if (verbose > 0)
+	if (verbose > 2)
 		xlog_warn("nfsdcb: authbuf=%s authtype=%s",
 			     authbuf, typebuf);
 
@@ -847,7 +847,7 @@ nfsdreopen_one(struct idmap_client *ic)
 {
 	int fd;
 
-	if (verbose > 0)
+	if (verbose > 2)
 		xlog_warn("ReOpening %s", ic->ic_path);
 
 	if ((fd = open(ic->ic_path, O_RDWR, 0)) != -1) {
@@ -913,7 +913,7 @@ nfsdopenone(struct idmap_client *ic)
 	}
 	event_add(ic->ic_event, NULL);
 
-	if (verbose > 0)
+	if (verbose > 2)
 		xlog_warn("Opened %s", ic->ic_path);
 
 	return (0);
@@ -932,7 +932,8 @@ nfsopen(struct idmap_client *ic)
 			*slash = 0;
 			inotify_add_watch(inotify_fd, ic->ic_path, IN_CREATE | IN_ONLYDIR | IN_ONESHOT);
 			*slash = '/';
-			xlog_warn("Path %s not available. waiting...", ic->ic_path);
+			if (verbose > 2)
+				xlog_warn("Path %s not available. waiting...", ic->ic_path);
 			return -1;
 		}
 
@@ -948,7 +949,7 @@ nfsopen(struct idmap_client *ic)
 		return -1;
 	}
 	event_add(ic->ic_event, NULL);
-	if (verbose > 0)
+	if (verbose > 2)
 		xlog_warn("Opened %s", ic->ic_path);
 
 	return (0);
