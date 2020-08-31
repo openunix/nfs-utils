@@ -687,6 +687,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
 	} else {
 		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
 		gss_release_name(&min_stat, &gacceptor);
+		gss_release_oid(&min_stat, &mech);
 	}
 
 	/*

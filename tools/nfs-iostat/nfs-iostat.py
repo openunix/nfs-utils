@@ -383,6 +383,8 @@ class DeviceData:
         sends = float(self.__rpc_data['rpcsends'])
         if sample_time == 0:
             sample_time = float(self.__nfs_data['age'])
+        if sample_time == 0:
+            sample_time = 1;
         return (sends / sample_time)
 
     def display_iostats(self, sample_time, which):
