@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- python-mode -*-
 """Parse /proc/self/mountstats and display it in human readable form
 """
