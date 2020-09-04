@@ -306,9 +306,6 @@ main(int argc, char **argv)
 			serverstart = 0;
 	}
 
-	/* Config memory is no longer needed */
-	conf_cleanup();
-
 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
 		switch (opt) {
 		case 'v':
