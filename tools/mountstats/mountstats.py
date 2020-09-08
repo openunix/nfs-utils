@@ -953,10 +953,11 @@ def print_iostat_summary(old, new, devices, time):
         if not old or device not in old:
             stats.display_iostats(time)
         else:
-            old_stats = DeviceData()
-            old_stats.parse_stats(old[device])
-            diff_stats = stats.compare_iostats(old_stats)
-            diff_stats.display_iostats(time)
+            if ("fstype autofs" not in str(old[device])) and ("fstype autofs" not in str(new[device])):
+                old_stats = DeviceData()
+                old_stats.parse_stats(old[device])
+                diff_stats = stats.compare_iostats(old_stats)
+                diff_stats.display_iostats(time)
 
 def iostat_command(args):
     """iostat-like command for NFS mount points

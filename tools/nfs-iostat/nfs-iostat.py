@@ -470,10 +470,13 @@ def parse_stats_file(filename):
 def print_iostat_summary(old, new, devices, time, options):
     stats = {}
     diff_stats = {}
+    devicelist = []
     if old:
         # Trim device list to only include intersection of old and new data,
         # this addresses umounts due to autofs mountpoints
-        devicelist = [x for x in old if x in devices]
+        for device in devices:
+            if "fstype autofs" not in str(old[device]):
+                devicelist.append(device)
     else:
         devicelist = devices
 
