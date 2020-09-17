@@ -176,8 +176,10 @@ main(int argc, char **argv)
 		xlog(L_ERROR, "-r and -u are incompatible");
 		return 1;
 	}
+printf("point 1\n");
 	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
 		return 1;
+printf("point 2\n");
 	if (optind == argc && ! f_all) {
 		if (force_flush) {
 			cache_flush(1);
@@ -191,6 +193,7 @@ main(int argc, char **argv)
 			return 0;
 		}
 	}
+printf("point 3\n");
 
 	/*
 	 * Serialize things as best we can
