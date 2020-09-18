@@ -1411,7 +1411,10 @@ static void nfsd_export(int f)
 
 		if (mp && !*mp)
 			mp = found->m_export.e_path;
-		if (mp && !is_mountpoint(mp))
+		errno = 0;
+		if (mp && !is_mountpoint(mp)) {
+			if (errno != 0 && !path_lookup_error(errno))
+				goto out;
 			/* Exportpoint is not mounted, so tell kernel it is
 			 * not available.
 			 * This will cause it not to appear in the V4 Pseudo-root
@@ -1420,9 +1423,12 @@ static void nfsd_export(int f)
 			 * And filehandle for this mountpoint from an earlier
 			 * mount will block in nfsd.fh lookup.
 			 */
+			xlog(L_WARNING,
+			     "Cannot export path '%s': not a mountpoint",
+			     path);
 			dump_to_cache(f, buf, sizeof(buf), dom, path,
 				      NULL, 60);
-		else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
+		} else if (dump_to_cache(f, buf, sizeof(buf), dom, path,
 					 &found->m_export, 0) < 0) {
 			xlog(L_WARNING,
 			     "Cannot export %s, possibly unsupported filesystem"
