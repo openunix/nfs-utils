@@ -1000,7 +1000,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt,
 					tried_upper = 1;
 				}
 			} else {
-				printerr(3, "Success getting keytab entry for '%s'\n",spn);
+				printerr(2, "Success getting keytab entry for '%s'\n",spn);
 				retval = 0;
 				goto out;
 			}
