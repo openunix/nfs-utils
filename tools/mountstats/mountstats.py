@@ -378,7 +378,10 @@ class DeviceData:
                 print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
         elif vers == '4':
             for op in Nfsv4ops:
-                print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+                try:
+                    print('\t%12s: %s' % (op, " ".join(str(x) for x in self.__rpc_data[op])))
+                except KeyError:
+                    continue
         else:
             print('\tnot implemented for version %d' % vers)
         print()
