@@ -57,6 +57,9 @@
 #include "conffile.h"
 #include "xlog.h"
 
+#define CONF_FILE_EXT ".conf"
+#define CONF_FILE_EXT_LEN ((int) (sizeof(CONF_FILE_EXT) - 1))
+
 #pragma GCC visibility push(hidden)
 
 static void conf_load_defaults(void);
@@ -638,8 +641,8 @@ static void
 conf_init_dir(const char *conf_file)
 {
 	struct dirent **namelist = NULL;
-	char *dname, fname[PATH_MAX];
-	int n = 0, i, nfiles = 0, fname_len, dname_len;
+	char *dname, fname[PATH_MAX], *cname;
+	int n = 0, nfiles = 0, i, fname_len, dname_len;
 	int trans, rv, path_len;
 
 	dname = malloc(strlen(conf_file) + 3);
@@ -685,12 +688,30 @@ conf_init_dir(const char *conf_file)
 				d->d_name, dname);
 			continue; 
 		}
+
+		/*
+		 * Check the naming of the file. Only process files
+		 * that end with CONF_FILE_EXT
+		 */
+		if (fname_len <= CONF_FILE_EXT_LEN) {
+			xlog(D_GENERAL, "conf_init_dir: %s: name too short", 
+				d->d_name);
+			continue;
+		}
+		cname = (d->d_name + (fname_len - CONF_FILE_EXT_LEN));
+		if (strcmp(cname, CONF_FILE_EXT) != 0) {
+			xlog(D_GENERAL, "conf_init_dir: %s: invalid file extension", 
+				d->d_name);
+			continue;
+		}
+
 		rv = snprintf(fname, PATH_MAX, "%s/%s", dname, d->d_name);
 		if (rv < path_len) {
 			xlog(L_WARNING, "conf_init_dir: file name: %s/%s too short", 
 				d->d_name, dname);
 			continue;
 		}
+
 		if (conf_load_files(trans, fname))
 			continue;
 		nfiles++;
