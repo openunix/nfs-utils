@@ -265,7 +265,15 @@ Only
 is recognized.
 
 .SH FILES
+.TP 10n
 .I /etc/nfs.conf
+Default NFS client configuration file
+.TP 10n
+.I /etc/nfs.conf.d
+When this directory exists and files ending 
+with ".conf" exist, those files will be
+used to set configuration variables. These
+files will override variables set in /etc/nfs.conf
 .SH SEE ALSO
 .BR nfsdcltrack (8),
 .BR rpc.nfsd (8),

@@ -88,6 +88,13 @@ the background (i.e. done asynchronously).
 .TP 10n
 .I /etc/nfsmount.conf
 Default NFS mount configuration file
+.TP 10n
+.I /etc/nfsmount.conf.d
+When this directory exists and files ending 
+with ".conf" exist, those files will be
+used to set configuration variables. These
+files will override variables set 
+in /etc/nfsmount.conf
 .PD
 .SH SEE ALSO
 .BR nfs (5),
