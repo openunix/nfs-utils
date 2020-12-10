@@ -21,13 +21,13 @@ After=rpc-gssd.service gssproxy.service rpc-svcgssd.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStartPre=/usr/sbin/exportfs -r
+ExecStartPre=-/usr/sbin/exportfs -r
 ExecStart=/usr/sbin/rpc.nfsd
 ExecStop=/usr/sbin/rpc.nfsd 0
 ExecStopPost=/usr/sbin/exportfs -au
 ExecStopPost=/usr/sbin/exportfs -f
 
-ExecReload=/usr/sbin/exportfs -r
+ExecReload=-/usr/sbin/exportfs -r
 
 [Install]
 WantedBy=multi-user.target
