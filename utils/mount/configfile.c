@@ -70,7 +70,22 @@ struct mnt_alias {
 };
 int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
 
+static const char *version_keys[] = {
+	"v2", "v3", "v4", "vers", "nfsvers", "minorversion", NULL
+};
+
 static int strict;
+
+static int is_version(const char *field)
+{
+	int i;
+	for (i = 0; version_keys[i] ; i++)
+		if (strcmp(version_keys[i], field) == 0)
+			return 1;
+	if (strncmp(field, "v4.", 3) == 0)
+		return 1;
+	return 0;
+}
 
 /*
  * See if the option is an alias, if so return the
@@ -195,6 +210,11 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
 	char buf[BUFSIZ], *value, *field;
 	char *nvalue, *ptr;
 	int argtype;
+	int have_version = 0;
+
+	if (po_rightmost(options, version_keys) >= 0 ||
+	    po_contains_prefix(options, "v4.", NULL, 0) == PO_FOUND)
+		have_version = 1;
 
 	list = conf_get_tag_list(section, arg);
 	TAILQ_FOREACH(node, &list->fields, link) {
@@ -225,6 +245,12 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
 		if (strcmp(field, "bg") == 0 &&
 		    po_contains(options, "fg") == PO_FOUND)
 			continue;
+
+		if (is_version(field)) {
+			if (have_version)
+				continue;
+			have_version = 1;
+		}
 
 		buf[0] = '\0';
 		value = conf_get_section(section, arg, node->field);
