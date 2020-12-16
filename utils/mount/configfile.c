@@ -204,6 +204,27 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
 		field = mountopts_alias(node->field, &argtype);
 		if (po_contains(options, field) == PO_FOUND)
 			continue;
+		/* Some options can be inverted by a "no" prefix.
+		 * Check for these.
+		 * "no" prefixes are unlikely in the config file as
+		 * "option=false" is preferred, but still possible.
+		 */
+		if (strncmp(field, "no", 2) == 0 &&
+		    po_contains(options, field+2) == PO_FOUND)
+			continue;
+		if (strlen(field) < BUFSIZ-3) {
+			strcat(strcpy(buf, "no"), field);
+			if (po_contains(options, buf) == PO_FOUND)
+				continue;
+		}
+
+		/* If fg or bg already present, ignore bg or fg */
+		if (strcmp(field, "fg") == 0 &&
+		    po_contains(options, "bg") == PO_FOUND)
+			continue;
+		if (strcmp(field, "bg") == 0 &&
+		    po_contains(options, "fg") == PO_FOUND)
+			continue;
 
 		buf[0] = '\0';
 		value = conf_get_section(section, arg, node->field);
