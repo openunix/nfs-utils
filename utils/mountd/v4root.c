@@ -34,7 +34,7 @@ static nfs_export pseudo_root = {
 	.m_export = {
 		.e_hostname = "*",
 		.e_path = "/",
-		.e_flags = NFSEXP_READONLY | NFSEXP_ROOTSQUASH
+		.e_flags = NFSEXP_READONLY
 				| NFSEXP_NOSUBTREECHECK | NFSEXP_FSID
 				| NFSEXP_V4ROOT | NFSEXP_INSECURE_PORT,
 		.e_anonuid = 65534,
@@ -60,8 +60,6 @@ set_pseudofs_security(struct exportent *pseudo)
 	struct flav_info *flav;
 	int i;
 
-	if ((flags & NFSEXP_ROOTSQUASH) == 0)
-		pseudo->e_flags &= ~NFSEXP_ROOTSQUASH;
 	for (flav = flav_map; flav < flav_map + flav_map_size; flav++) {
 		struct sec_entry *new;
 
