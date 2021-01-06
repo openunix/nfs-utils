@@ -277,8 +277,10 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
 		}
 		if (buf[0] == '\0')
 			continue;
+		if (default_value(buf))
+			continue;
+
 		po_append(options, buf);
-		default_value(buf);
 	}
 	conf_free_list(list);
 }
