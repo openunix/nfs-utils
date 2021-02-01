@@ -18,7 +18,16 @@
 
 #include "nfslib.h"
 #include "conffile.h"
+#include "exportfs.h"
+#include "export.h"
 
+extern void my_svc_run(void);
+
+struct state_paths etab;
+struct state_paths rmtab;
+
+int manage_gids;
+int use_ipaddr = -1;
 
 static struct option longopts[] =
 {
@@ -36,7 +45,7 @@ inline static void set_signals(void);
 static void 
 killer (int sig)
 {
-	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
+	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
 	exit(0);
 }
 static void
@@ -110,12 +119,29 @@ main(int argc, char **argv)
 
 	}
 
+	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
+		return 1;
+	if (!setup_state_path_names(progname, RMTAB, RMTABTMP, RMTABLCK, &rmtab))
+		return 1;
+
 	if (!foreground) 
 		xlog_stderr(0);
 
 	daemon_init(foreground);
 
 	set_signals();
-	
 	daemon_ready();
+
+	/* Open files now to avoid sharing descriptors among forked processes */
+	cache_open();
+
+	/* Process incoming upcalls */
+	cache_process_loop();
+
+	xlog(L_ERROR, "%s: process loop terminated unexpectedly. Exiting...\n",
+		progname);
+
+	free_state_path_names(&etab);
+	free_state_path_names(&rmtab);
+	exit(1);
 }

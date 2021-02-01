@@ -10,9 +10,13 @@ KPREFIX		= @kprefix@
 sbin_PROGRAMS	= exportd
 
 exportd_SOURCES = exportd.c
-exportd_LDADD = ../../support/nfs/libnfs.la
+exportd_LDADD = ../../support/export/libexport.a \
+			../../support/nfs/libnfs.la \
+			../../support/misc/libmisc.a \
+			$(OPTLIBS) $(LIBBLKID) $(LIBPTHREAD) 
 
-exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS)
+exportd_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) \
+		-I$(top_srcdir)/support/export
 
 MAINTAINERCLEANFILES = Makefile.in
 

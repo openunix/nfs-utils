@@ -30,10 +30,13 @@
 #include "nfsd_path.h"
 #include "nfslib.h"
 #include "exportfs.h"
-#include "mountd.h"
-#include "fsloc.h"
+#include "export.h"
 #include "pseudoflavors.h"
 #include "xcommon.h"
+
+#ifdef HAVE_JUNCTION_SUPPORT
+#include "fsloc.h"
+#endif
 
 #ifdef USE_BLKID
 #include "blkid/blkid.h"
@@ -44,6 +47,7 @@
  */
 void	cache_set_fds(fd_set *fdset);
 int	cache_process_req(fd_set *readfds);
+void cache_process_loop(void);
 
 enum nfsd_fsid {
 	FSID_DEV = 0,
@@ -909,6 +913,7 @@ out:
 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
 }
 
+#ifdef HAVE_JUNCTION_SUPPORT
 static void write_fsloc(char **bp, int *blen, struct exportent *ep)
 {
 	struct servers *servers;
@@ -931,7 +936,7 @@ static void write_fsloc(char **bp, int *blen, struct exportent *ep)
 	qword_addint(bp, blen, servers->h_referral);
 	release_replicas(servers);
 }
-
+#endif
 static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_mask)
 {
 	struct sec_entry *p;
@@ -974,7 +979,10 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
 		qword_addint(&bp, &blen, exp->e_anonuid);
 		qword_addint(&bp, &blen, exp->e_anongid);
 		qword_addint(&bp, &blen, exp->e_fsid);
+
+#ifdef HAVE_JUNCTION_SUPPORT
 		write_fsloc(&bp, &blen, exp);
+#endif
 		write_secinfo(&bp, &blen, exp, flag_mask);
 		if (exp->e_uuid == NULL || different_fs) {
 			char u[16];
@@ -1507,6 +1515,38 @@ int cache_process_req(fd_set *readfds)
 		}
 	}
 	return cnt;
+}
+
+/**
+ * cache_process_loop - process incoming upcalls
+ */
+void cache_process_loop(void)
+{
+	fd_set	readfds;
+	int	selret;
+
+	FD_ZERO(&readfds);
+
+	for (;;) {
+
+		cache_set_fds(&readfds);
+
+		selret = select(FD_SETSIZE, &readfds,
+				(void *) 0, (void *) 0, (struct timeval *) 0);
+
+
+		switch (selret) {
+		case -1:
+			if (errno == EINTR || errno == ECONNREFUSED
+			 || errno == ENETUNREACH || errno == EHOSTUNREACH)
+				continue;
+			xlog(L_ERROR, "my_svc_run() - select: %m");
+			return;
+
+		default:
+			cache_process_req(&readfds);
+		}
+	}
 }
 
 

@@ -22,7 +22,7 @@
 #include "misc.h"
 #include "nfslib.h"
 #include "exportfs.h"
-#include "mountd.h"
+#include "export.h"
 #include "v4root.h"
 
 enum auth_error
@@ -43,11 +43,13 @@ extern int use_ipaddr;
 
 extern struct state_paths etab;
 
+/*
 void
 auth_init(void)
 {
 	auth_reload();
 }
+*/
 
 /*
  * A client can match many different netgroups and it's tough to know
