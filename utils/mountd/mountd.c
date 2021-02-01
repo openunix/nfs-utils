@@ -684,6 +684,9 @@ read_mount_conf(char **argv)
 	if (s && !state_setup_basedir(argv[0], s))
 		exit(1);
 
+	if ((s = conf_get_str("mountd", "debug")) != NULL)
+		xlog_sconfig(s, 1);
+
 	/* NOTE: following uses "nfsd" section of nfs.conf !!!! */
 	if (conf_get_bool("nfsd", "udp", NFSCTL_UDPISSET(_rpcprotobits)))
 		NFSCTL_UDPSET(_rpcprotobits);
