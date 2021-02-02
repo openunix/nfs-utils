@@ -277,10 +277,9 @@ conf_parse_mntopts(char *section, char *arg, struct mount_options *options)
 		}
 		if (buf[0] == '\0')
 			continue;
-		if (default_value(buf))
-			continue;
 
 		po_append(options, buf);
+		default_value(buf);
 	}
 	conf_free_list(list);
 }
@@ -335,7 +334,11 @@ char *conf_get_mntopts(char *spec, char *mount_point,
 	 * Strip out defaults, which have already been handled,
 	 * then join the rest and return.
 	 */
-	po_remove_all(options, "default");
+	while (po_contains_prefix(options, "default", &ptr, 0) == PO_FOUND) {
+		ptr = strdup(ptr);
+		po_remove_all(options, ptr);
+		free(ptr);
+	}
 
 	po_join(options, &mount_opts);
 	po_destroy(options);
