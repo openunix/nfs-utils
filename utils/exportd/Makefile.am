@@ -1,6 +1,9 @@
 ## Process this file with automake to produce Makefile.in
 
 OPTLIBS		=
+if CONFIG_JUNCTION
+OPTLIBS		+= ../../support/junction/libjunction.la $(LIBXML2)
+endif
 
 man8_MANS	= exportd.man
 EXTRA_DIST	= $(man8_MANS)
