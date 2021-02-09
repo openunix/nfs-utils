@@ -131,7 +131,8 @@ but on the server, this will resolve to the path
 .TP
 .B exportd
 Recognized values:
-.B threads
+.BR threads ,
+.BR state-directory-path
 
 See
 .BR exportd (8)

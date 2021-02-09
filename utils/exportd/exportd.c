@@ -26,7 +26,6 @@
 extern void my_svc_run(void);
 
 struct state_paths etab;
-struct state_paths rmtab;
 
 /* Number of mountd threads to start.   Default is 1 and
  * that's probably enough unless you need hundreds of
@@ -80,6 +79,12 @@ wait_for_workers (void)
 	}
 }
 
+inline void
+cleanup_lockfiles (void)
+{
+	unlink(etab.lockfn);
+}
+
 /* Fork num_threads worker children and wait for them */
 static void
 fork_workers(void)
@@ -117,6 +122,8 @@ fork_workers(void)
 
 	/* in parent */
 	wait_for_workers();
+	cleanup_lockfiles();
+	free_state_path_names(&etab);
 	xlog(L_NOTICE, "exportd: no more workers, exiting\n");
 	exit(0);
 }
@@ -129,6 +136,8 @@ killer (int sig)
 		kill(0, SIGTERM);
 		wait_for_workers();
 	}
+	cleanup_lockfiles();
+	free_state_path_names(&etab);
 	xlog (L_NOTICE, "Caught signal %d, exiting.", sig);
 
 	exit(0);
@@ -159,24 +168,33 @@ set_signals(void)
 	sa.sa_handler = sig_hup;
 	sigaction(SIGHUP, &sa, NULL);
 }
+
 static void
 usage(const char *prog, int n)
 {
 	fprintf(stderr,
 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
+"	[-s|--state-directory-path path]\n"
 "	[-t num|--num-threads=num]\n", prog);
 	exit(n);
 }
 
 inline static void 
-read_exportd_conf(char *progname)
+read_exportd_conf(char *progname, char **argv)
 {
+	char *s;
+
 	conf_init_file(NFS_CONFFILE);
 
 	xlog_set_debug(progname);
 
 	num_threads = conf_get_num("exportd", "threads", num_threads);
+
+	s = conf_get_str("exportd", "state-directory-path");
+	if (s && !state_setup_basedir(argv[0], s))
+		exit(1);
 }
+
 int
 main(int argc, char **argv)
 {
@@ -194,9 +212,9 @@ main(int argc, char **argv)
 	xlog_open(progname);
 
 	/* Read in config setting */
-	read_exportd_conf(progname);
+	read_exportd_conf(progname, argv);
 
-	while ((c = getopt_long(argc, argv, "d:fht:", longopts, NULL)) != EOF) {
+	while ((c = getopt_long(argc, argv, "d:fhs:t:", longopts, NULL)) != EOF) {
 		switch (c) {
 		case 'd':
 			xlog_sconfig(optarg, 1);
@@ -206,6 +224,10 @@ main(int argc, char **argv)
 			break;
 		case 'h':
 			usage(progname, 0);
+			break;
+		case 's':
+			if (!state_setup_basedir(argv[0], optarg))
+				exit(1);
 			break;
 		case 't':
 			num_threads = atoi (optarg);
@@ -219,9 +241,7 @@ main(int argc, char **argv)
 
 	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
 		return 1;
-	if (!setup_state_path_names(progname, RMTAB, RMTABTMP, RMTABLCK, &rmtab))
-		return 1;
-
+	
 	if (!foreground) 
 		xlog_stderr(0);
 
@@ -252,6 +272,5 @@ main(int argc, char **argv)
 		progname);
 
 	free_state_path_names(&etab);
-	free_state_path_names(&rmtab);
 	exit(1);
 }

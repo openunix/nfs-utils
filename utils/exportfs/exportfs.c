@@ -92,10 +92,21 @@ release_lockfile()
 	}
 }
 inline static void 
-read_exportfs_conf(void)
+read_exportfs_conf(char **argv)
 {
+	char *s;
+
 	conf_init_file(NFS_CONFFILE);
 	xlog_set_debug("exportfs");
+
+	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
+	s = conf_get_str("mountd", "state-directory-path");
+	/* Also look in the exportd section */
+	if (s == NULL)
+		s = conf_get_str("exportd", "state-directory-path");
+	if (s && !state_setup_basedir(argv[0], s))
+		exit(1);
+
 }
 int
 main(int argc, char **argv)
@@ -110,7 +121,6 @@ main(int argc, char **argv)
 	int	f_ignore = 0;
 	int	i, c;
 	int	force_flush = 0;
-	char	*s;
 
 	if ((progname = strrchr(argv[0], '/')) != NULL)
 		progname++;
@@ -122,14 +132,9 @@ main(int argc, char **argv)
 	xlog_syslog(0);
 
 	/* Read in config setting */
-	read_exportfs_conf();
+	read_exportfs_conf(argv);
 
 	nfsd_path_init();
-
-	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
-	s = conf_get_str("mountd", "state-directory-path");
-	if (s && !state_setup_basedir(argv[0], s))
-		exit(1);
 
 	while ((c = getopt(argc, argv, "ad:fhio:ruvs")) != EOF) {
 		switch(c) {
