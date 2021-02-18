@@ -17,7 +17,9 @@ unit_files =  \
 
 if CONFIG_NFSV4
 unit_files += \
-    nfs-idmapd.service
+    nfs-idmapd.service \
+    nfsv4-exportd.service \
+    nfsv4-server.service
 endif
 
 if CONFIG_NFSV41
