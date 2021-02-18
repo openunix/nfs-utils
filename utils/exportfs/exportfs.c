@@ -91,7 +91,12 @@ release_lockfile()
 		_lockfd = -1;
 	}
 }
-
+inline static void 
+read_exportfs_conf(void)
+{
+	conf_init_file(NFS_CONFFILE);
+	xlog_set_debug("exportfs");
+}
 int
 main(int argc, char **argv)
 {
@@ -116,8 +121,9 @@ main(int argc, char **argv)
 	xlog_stderr(1);
 	xlog_syslog(0);
 
-	conf_init_file(NFS_CONFFILE);
-	xlog_from_conffile("exportfs");
+	/* Read in config setting */
+	read_exportfs_conf();
+
 	nfsd_path_init();
 
 	/* NOTE: following uses "mountd" section of nfs.conf !!!! */

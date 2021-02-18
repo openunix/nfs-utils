@@ -129,7 +129,7 @@ xlog_sconfig(char *kind, int on)
 }
 
 void
-xlog_from_conffile(char *service)
+xlog_set_debug(char *service)
 {
 	struct conf_list *kinds;
 	struct conf_list_node *n;

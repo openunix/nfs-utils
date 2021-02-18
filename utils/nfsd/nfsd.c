@@ -56,6 +56,13 @@ static struct option longopts[] =
 	{ NULL, 0, 0, 0 }
 };
 
+inline static void 
+read_nfsd_conf(void)
+{
+	conf_init_file(NFS_CONFFILE); 
+	xlog_set_debug("nfsd");
+}
+
 int
 main(int argc, char **argv)
 {
@@ -81,8 +88,8 @@ main(int argc, char **argv)
 	xlog_syslog(0);
 	xlog_stderr(1);
 
-	conf_init_file(NFS_CONFFILE); 
-	xlog_from_conffile("nfsd");
+	/* Read in config setting */
+	read_nfsd_conf();
 
 	nfssvc_get_minormask(&minormask);
 

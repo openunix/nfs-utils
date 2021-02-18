@@ -666,13 +666,13 @@ int	port = 0;
 int	descriptors = 0;
 
 inline static void 
-read_mount_conf(char **argv)
+read_mountd_conf(char **argv)
 {
 	char	*s;
 
 	conf_init_file(NFS_CONFFILE);
 
-	xlog_from_conffile("mountd");
+	xlog_set_debug("mountd");
 	manage_gids = conf_get_bool("mountd", "manage-gids", manage_gids);
 	descriptors = conf_get_num("mountd", "descriptors", descriptors);
 	port = conf_get_num("mountd", "port", port);
@@ -683,9 +683,6 @@ read_mount_conf(char **argv)
 	s = conf_get_str("mountd", "state-directory-path");
 	if (s && !state_setup_basedir(argv[0], s))
 		exit(1);
-
-	if ((s = conf_get_str("mountd", "debug")) != NULL)
-		xlog_sconfig(s, 1);
 
 	/* NOTE: following uses "nfsd" section of nfs.conf !!!! */
 	if (conf_get_bool("nfsd", "udp", NFSCTL_UDPISSET(_rpcprotobits)))
@@ -726,7 +723,7 @@ main(int argc, char **argv)
 	xlog_open(progname);
 
 	/* Read in config setting */
-	read_mount_conf(argv);
+	read_mountd_conf(argv);
 
 	/* Parse the command line options and arguments. */
 	opterr = 0;
