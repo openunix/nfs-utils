@@ -47,6 +47,7 @@ utils/idmapd/idmapd
 utils/lockd/lockd
 utils/mount/mount.nfs
 utils/mountd/mountd
+utils/exportd/exportd
 utils/nfsd/nfsd
 utils/nfsstat/nfsstat
 utils/nhfsstone/nhfsstone

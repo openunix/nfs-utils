@@ -706,6 +706,7 @@ AC_CONFIG_FILES([
 	utils/idmapd/Makefile
 	utils/mount/Makefile
 	utils/mountd/Makefile
+	utils/exportd/Makefile
 	utils/nfsd/Makefile
 	utils/nfsref/Makefile
 	utils/nfsstat/Makefile

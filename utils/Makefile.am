@@ -5,6 +5,7 @@ OPTDIRS =
 if CONFIG_NFSV4
 OPTDIRS += idmapd
 OPTDIRS += nfsidmap
+OPTDIRS += exportd
 endif
 
 if CONFIG_NFSV41
