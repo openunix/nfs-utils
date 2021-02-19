@@ -257,6 +257,19 @@ AC_ARG_ENABLE(nfsdcltrack,
 	enable_nfsdcltrack=$enableval,
 	enable_nfsdcltrack="yes")
 
+if test "$enable_nfsv4" = yes; then
+AC_ARG_ENABLE(nfsv4server,
+	[AC_HELP_STRING([--enable-nfsv4server],
+			[enable support for NFSv4 only server  @<:@default=no@:>@])],
+	enable_nfsv4server=$enableval,
+	enable_nfsv4server="no")
+	if test "$enable_nfsv4server" = yes; then
+		AC_DEFINE(HAVE_NFSV4SERVER_SUPPORT, 1,
+                          [Define this if you want NFSv4 server only support compiled in])
+	fi
+	AM_CONDITIONAL(CONFIG_NFSV4SERVER, [test "$enable_nfsv4server" = "yes" ])
+fi
+
 dnl Check for TI-RPC library and headers
 AC_LIBTIRPC
 
