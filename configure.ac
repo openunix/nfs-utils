@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 dnl
-AC_INIT([linux nfs-utils],[2.5.2],[linux-nfs@vger.kernel.org],[nfs-utils])
+AC_INIT([linux nfs-utils],[2.5.3],[linux-nfs@vger.kernel.org],[nfs-utils])
 AC_CANONICAL_BUILD([])
 AC_CANONICAL_HOST([])
 AC_CONFIG_MACRO_DIR(aclocal)
@@ -257,7 +257,6 @@ AC_ARG_ENABLE(nfsdcltrack,
 	enable_nfsdcltrack=$enableval,
 	enable_nfsdcltrack="yes")
 
-if test "$enable_nfsv4" = yes; then
 AC_ARG_ENABLE(nfsv4server,
 	[AC_HELP_STRING([--enable-nfsv4server],
 			[enable support for NFSv4 only server  @<:@default=no@:>@])],
@@ -268,7 +267,6 @@ AC_ARG_ENABLE(nfsv4server,
                           [Define this if you want NFSv4 server only support compiled in])
 	fi
 	AM_CONDITIONAL(CONFIG_NFSV4SERVER, [test "$enable_nfsv4server" = "yes" ])
-fi
 
 dnl Check for TI-RPC library and headers
 AC_LIBTIRPC
