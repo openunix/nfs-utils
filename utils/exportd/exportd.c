@@ -42,6 +42,7 @@ static struct option longopts[] =
 	{ "foreground", 0, 0, 'F' },
 	{ "debug", 1, 0, 'd' },
 	{ "help", 0, 0, 'h' },
+	{ "manage-gids", 0, 0, 'g' },
 	{ "num-threads", 1, 0, 't' },
 	{ NULL, 0, 0, 0 }
 };
@@ -174,6 +175,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
+"	[-g|--manage-gids]\n"
 "	[-s|--state-directory-path path]\n"
 "	[-t num|--num-threads=num]\n", prog);
 	exit(n);
@@ -188,6 +190,7 @@ read_exportd_conf(char *progname, char **argv)
 
 	xlog_set_debug(progname);
 
+	manage_gids = conf_get_bool("exportd", "manage-gids", manage_gids);
 	num_threads = conf_get_num("exportd", "threads", num_threads);
 
 	s = conf_get_str("exportd", "state-directory-path");
@@ -214,13 +217,16 @@ main(int argc, char **argv)
 	/* Read in config setting */
 	read_exportd_conf(progname, argv);
 
-	while ((c = getopt_long(argc, argv, "d:fhs:t:", longopts, NULL)) != EOF) {
+	while ((c = getopt_long(argc, argv, "d:fghs:t:", longopts, NULL)) != EOF) {
 		switch (c) {
 		case 'd':
 			xlog_sconfig(optarg, 1);
 			break;
 		case 'f':
 			foreground++;
+			break;
+		case 'g':
+			manage_gids = 1;
 			break;
 		case 'h':
 			usage(progname, 0);
