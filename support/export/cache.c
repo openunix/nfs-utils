@@ -96,7 +96,6 @@ static bool path_lookup_error(int err)
  * Record is terminated with newline.
  *
  */
-static int cache_export_ent(char *buf, int buflen, char *domain, struct exportent *exp, char *path);
 
 #define INITIAL_MANAGED_GROUPS 100
 
@@ -870,18 +869,13 @@ static void nfsd_fh(int f)
 	    !is_mountpoint(found->e_mountpoint[0]?
 			   found->e_mountpoint:
 			   found->e_path)) {
-		/* Cannot export this yet 
+		/* Cannot export this yet
 		 * should log a warning, but need to rate limit
 		   xlog(L_WARNING, "%s not exported as %d not a mountpoint",
 		   found->e_path, found->e_mountpoint);
 		 */
 		/* FIXME we need to make sure we re-visit this later */
 		goto out;
-	} else if (cache_export_ent(buf, sizeof(buf), dom, found, found_path) < 0) {
-		if (!path_lookup_error(errno))
-			goto out;
-		/* The kernel is saying the path is unexportable */
-		found = NULL;
 	}
 
 	bp = buf; blen = sizeof(buf);
