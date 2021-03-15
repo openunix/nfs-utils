@@ -10,30 +10,23 @@ nfsv4.exportd \- NFSv4 Server Mount Daemon
 .SH DESCRIPTION
 The
 .B nfsv4.exportd
-is used to manage NFSv4 exports. The NFSv4 server
-receives a mount request from a client and pass it up to 
-.B nfsv4.exportd. 
-.B nfsv4.exportd 
-then uses the exports(5) export
-table to verify the validity of the mount request.
-.PP
-An NFS server maintains a table of local physical file systems
-that are accessible to NFS clients.
-Each file system in this table is referred to as an
-.IR "exported file system" ,
-or
-.IR export ,
-for short.
-.PP
-Each file system in the export table has an access control list.
+is used to manage NFSv4 exports.
+The NFS server
+.RI ( nfsd )
+maintains a cache of authentication and authorization information which
+is used to identify the source of each requent, and then what access
+permissions that source has to any local filesystem.  When required
+information is not found in the cache, the server sends a request to
 .B nfsv4.exportd
-uses these access control lists to determine
-whether an NFS client is permitted to access a given file system.
-For details on how to manage your NFS server's export table, see the
-.BR exports (5)
-and
-.BR exportfs (8)
-man pages.
+to fill in the missing information.  
+.B nfsv4.exportd
+uses a table of information stored in
+.B /var/lib/nfs/etab
+and maintained by
+.BR exportfs (8),
+possibly based on the contents of 
+.BR exports (5),
+to respond to each request.
 .SH OPTIONS
 .TP
 .B \-d kind " or " \-\-debug kind
@@ -46,7 +39,8 @@ Run in foreground (do not daemonize)
 Display usage message.
 .TP
 .BR "\-t N" " or " "\-\-num\-threads=N " or  " \-\-num\-threads N "
-This option specifies the number of worker threads that rpc.mountd
+This option specifies the number of worker threads that 
+.B nfsv4.exports
 spawns.  The default is 1 thread, which is probably enough.  More
 threads are usually only needed for NFS servers which need to handle
 mount storms of hundreds of NFS mounts in a few seconds, or when
@@ -94,4 +88,6 @@ listing exports, export options, and access control lists
 .BR nfs.conf (5),
 .BR firwall-cmd (1),
 .sp
-RFC 3530 - "Network File System (NFS) version 4 Protocol"
+RFC 7530 - "Network File System (NFS) Version 4 Protocol"
+.br
+RFC 8881 - "Network File System (NFS) Version 4 Minor Version 1 Protocol"
