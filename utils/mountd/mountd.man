@@ -91,6 +91,27 @@ is not updated to reflect any NFSv4 activity.
 .B \-d kind " or " \-\-debug kind
 Turn on debugging. Valid kinds are: all, auth, call, general and parse.
 .TP
+.BR \-l " or " \-\-log\-auth
+Enable logging of responses to authentication and access requests from
+nfsd.  Each response is then cached by the kernel for 30 minutes, and
+will be refreshed after 15 minutes if the relevant client remains
+active.
+Note that
+.B -l
+is equivalent to
+.B "-d auth"
+and so can be enabled in
+.B /etc/nfs.conf
+with
+.B "\[dq]debug = auth\[dq]"
+in the
+.B "[mountd]"
+section.
+.IP
+.B rpc.mountd
+will always log authentication responses to MOUNT requests when NFSv3 is
+used, but to get similar logs for NFSv4, this option is required.
+.TP
 .B \-F " or " \-\-foreground
 Run in foreground (do not daemonize)
 .TP

@@ -138,6 +138,14 @@ See
 .BR exportd (8)
 for details.
 
+Note that setting 
+.B "\[dq]debug = auth\[dq]"
+for
+.B exportd
+is equivalent to providing the
+.B \-\-log\-auth
+option.
+
 .TP
 .B nfsdcltrack
 Recognized values:
@@ -196,6 +204,14 @@ These, together with the protocol and version values in the
 section, are used to configure mountd.  See
 .BR rpc.mountd (8)
 for details.
+
+Note that setting 
+.B "\[dq]debug = auth\[dq]"
+for
+.B mountd
+is equivalent to providing the
+.B \-\-log\-auth
+option.
 
 The
 .B state-directory-path

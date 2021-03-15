@@ -74,8 +74,10 @@ static struct option longopts[] =
 	{ "reverse-lookup", 0, 0, 'r' },
 	{ "manage-gids", 0, 0, 'g' },
 	{ "no-udp", 0, 0, 'u' },
+	{ "log-auth", 0, 0, 'l'},
 	{ NULL, 0, 0, 0 }
 };
+static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gl";
 
 #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
 #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
@@ -727,7 +729,7 @@ main(int argc, char **argv)
 
 	/* Parse the command line options and arguments. */
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "o:nFd:p:P:hH:N:V:vurs:t:g", longopts, NULL)) != EOF)
+	while ((c = getopt_long(argc, argv, shortopts, longopts, NULL)) != EOF)
 		switch (c) {
 		case 'g':
 			manage_gids = 1;
@@ -797,6 +799,9 @@ main(int argc, char **argv)
 			exit(0);
 		case 'u':
 			NFSCTL_UDPUNSET(_rpcprotobits);
+			break;
+		case 'l':
+			xlog_sconfig("auth", 1);
 			break;
 		case 0:
 			break;
@@ -913,6 +918,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
+"	[-l|--log-auth]\n"
 "	[-o num|--descriptors num]\n"
 "	[-p|--port port] [-V version|--nfs-version version]\n"
 "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"

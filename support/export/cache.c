@@ -145,6 +145,15 @@ static void auth_unix_ip(int f)
 		client = client_compose(ai);
 		nfs_freeaddrinfo(ai);
 	}
+	if (!client)
+		xlog(D_AUTH, "failed authentication for IP %s", ipaddr);
+	else if	(!use_ipaddr)
+		xlog(D_AUTH, "successful authentication for IP %s as %s",
+		     ipaddr, *client ? client : "DEFAULT");
+	else
+		xlog(D_AUTH, "successful authentication for IP %s",
+			     ipaddr);
+
 	bp = buf; blen = sizeof(buf);
 	qword_add(&bp, &blen, "nfsd");
 	qword_add(&bp, &blen, ipaddr);
@@ -896,6 +905,8 @@ static void nfsd_fh(int f)
 	qword_addeol(&bp, &blen);
 	if (blen <= 0 || cache_write(f, buf, bp - buf) != bp - buf)
 		xlog(L_ERROR, "nfsd_fh: error writing reply");
+	if (!found)
+		xlog(D_AUTH, "denied access to %s", *dom == '$' ? dom+1 : dom);
 out:
 	if (found_path)
 		free(found_path);
@@ -987,8 +998,13 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
 			qword_add(&bp, &blen, "uuid");
 			qword_addhex(&bp, &blen, u, 16);
 		}
-	} else
+		xlog(D_AUTH, "granted access to %s for %s",
+		     path, *domain == '$' ? domain+1 : domain);
+	} else {
 		qword_adduint(&bp, &blen, now + ttl);
+		xlog(D_AUTH, "denied access to %s for %s",
+		     path, *domain == '$' ? domain+1 : domain);
+	}
 	qword_addeol(&bp, &blen);
 	if (blen <= 0) {
 		errno = ENOBUFS;

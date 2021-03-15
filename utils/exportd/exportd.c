@@ -44,8 +44,10 @@ static struct option longopts[] =
 	{ "help", 0, 0, 'h' },
 	{ "manage-gids", 0, 0, 'g' },
 	{ "num-threads", 1, 0, 't' },
+	{ "log-auth", 0, 0, 'l' },
 	{ NULL, 0, 0, 0 }
 };
+static char shortopts[] = "d:fghs:t:l";
 
 /*
  * Signal handlers.
@@ -175,7 +177,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
-"	[-g|--manage-gids]\n"
+"	[-g|--manage-gids] [-l|--log-auth]\n"
 "	[-s|--state-directory-path path]\n"
 "	[-t num|--num-threads=num]\n", prog);
 	exit(n);
@@ -217,10 +219,13 @@ main(int argc, char **argv)
 	/* Read in config setting */
 	read_exportd_conf(progname, argv);
 
-	while ((c = getopt_long(argc, argv, "d:fghs:t:", longopts, NULL)) != EOF) {
+	while ((c = getopt_long(argc, argv, shortopts, longopts, NULL)) != EOF) {
 		switch (c) {
 		case 'd':
 			xlog_sconfig(optarg, 1);
+			break;
+		case 'l':
+			xlog_sconfig("auth", 1);
 			break;
 		case 'f':
 			foreground++;
