@@ -87,6 +87,8 @@ unsigned int  context_timeout = 0;
 unsigned int  rpc_timeout = 5;
 char *preferred_realm = NULL;
 char *ccachedir = NULL;
+/* set $HOME to "/" by default */
+static bool set_home = true;
 /* Avoid DNS reverse lookups on server names */
 static bool avoid_dns = true;
 static bool use_gssproxy = false;
@@ -900,7 +902,7 @@ sig_die(int signal)
 static void
 usage(char *progname)
 {
-	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-H]\n",
 		progname);
 	exit(1);
 }
@@ -941,6 +943,7 @@ read_gss_conf(void)
 		preferred_realm = s;
 
 	use_gssproxy = conf_get_bool("gssd", "use-gss-proxy", use_gssproxy);
+	set_home = conf_get_bool("gssd", "set-home", set_home);
 }
 
 int
@@ -961,7 +964,7 @@ main(int argc, char *argv[])
 	verbosity = conf_get_num("gssd", "verbosity", verbosity);
 	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
 
-	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
+	while ((opt = getopt(argc, argv, "HDfvrlmnMp:k:d:t:T:R:")) != -1) {
 		switch (opt) {
 			case 'f':
 				fg = 1;
@@ -1009,6 +1012,9 @@ main(int argc, char *argv[])
 			case 'D':
 				avoid_dns = false;
 				break;
+			case 'H':
+				set_home = false;
+				break;
 			default:
 				usage(argv[0]);
 				break;
@@ -1018,13 +1024,19 @@ main(int argc, char *argv[])
 	/*
 	 * Some krb5 routines try to scrape info out of files in the user's
 	 * home directory. This can easily deadlock when that homedir is on a
-	 * kerberized NFS mount. By setting $HOME unconditionally to "/", we
-	 * prevent this behavior in routines that use $HOME in preference to
-	 * the results of getpw*.
+	 * kerberized NFS mount. By setting $HOME to "/" by default, we prevent
+	 * this behavior in routines that use $HOME in preference to the results
+	 * of getpw*.
+	 *
+	 * Some users do not use Kerberized home dirs and need $HOME to remain
+	 * unchanged. Those users can leave $HOME unchanged by setting set_home
+	 * to false.
 	 */
-	if (setenv("HOME", "/", 1)) {
-		printerr(0, "gssd: Unable to set $HOME: %s\n", strerror(errno));
-		exit(1);
+	if (set_home) {
+		if (setenv("HOME", "/", 1)) {
+			printerr(0, "gssd: Unable to set $HOME: %s\n", strerror(errno));
+			exit(1);
+		}
 	}
 
 	if (use_gssproxy) {

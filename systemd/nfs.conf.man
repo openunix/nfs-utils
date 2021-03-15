@@ -253,7 +253,8 @@ Recognized values:
 .BR rpc-timeout ,
 .BR keytab-file ,
 .BR cred-cache-directory ,
-.BR preferred-realm .
+.BR preferred-realm ,
+.BR set-home .
 
 See
 .BR rpc.gssd (8)
