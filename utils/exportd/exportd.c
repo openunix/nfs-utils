@@ -46,9 +46,10 @@ static struct option longopts[] =
 	{ "num-threads", 1, 0, 't' },
 	{ "log-auth", 0, 0, 'l' },
 	{ "cache-use-ipaddr", 0, 0, 'i' },
+	{ "ttl", 0, 0, 'T' },
 	{ NULL, 0, 0, 0 }
 };
-static char shortopts[] = "d:fghs:t:li";
+static char shortopts[] = "d:fghs:t:liT:";
 
 /*
  * Signal handlers.
@@ -178,7 +179,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
-"	[-g|--manage-gids] [-l|--log-auth] [-i|--cache-use-ipaddr]\n"
+"	[-g|--manage-gids] [-l|--log-auth] [-i|--cache-use-ipaddr] [-T|--ttl ttl]\n"
 "	[-s|--state-directory-path path]\n"
 "	[-t num|--num-threads=num]\n", prog);
 	exit(n);
@@ -188,6 +189,7 @@ inline static void
 read_exportd_conf(char *progname, char **argv)
 {
 	char *s;
+	int ttl;
 
 	conf_init_file(NFS_CONFFILE);
 
@@ -201,14 +203,19 @@ read_exportd_conf(char *progname, char **argv)
 	s = conf_get_str("exportd", "state-directory-path");
 	if (s && !state_setup_basedir(argv[0], s))
 		exit(1);
+
+	ttl = conf_get_num("mountd", "ttl", default_ttl);
+	if (ttl > 0)
+		default_ttl = ttl;
 }
 
 int
 main(int argc, char **argv)
 {
 	char *progname;
-	int	foreground = 0;
-	int	 c;
+	int foreground = 0;
+	int c;
+	int ttl;
 
 	/* Set the basename */
 	if ((progname = strrchr(argv[0], '/')) != NULL)
@@ -241,6 +248,15 @@ main(int argc, char **argv)
 			break;
 		case 'i':
 			use_ipaddr = 2;
+			break;
+		case 'T':
+			ttl = atoi(optarg);
+			if (ttl <= 0) {
+				fprintf(stderr, "%s: bad ttl number of seconds: %s\n",
+					argv[0], optarg);
+				usage(argv[0], 1);
+			}
+			default_ttl = ttl;
 			break;
 		case 's':
 			if (!state_setup_basedir(argv[0], optarg))

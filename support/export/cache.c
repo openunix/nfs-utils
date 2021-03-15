@@ -157,7 +157,7 @@ static void auth_unix_ip(int f)
 	bp = buf; blen = sizeof(buf);
 	qword_add(&bp, &blen, "nfsd");
 	qword_add(&bp, &blen, ipaddr);
-	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
+	qword_adduint(&bp, &blen, time(0) + default_ttl);
 	if (use_ipaddr && client) {
 		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
 		ipaddr[0] = '$';
@@ -230,7 +230,7 @@ static void auth_unix_gid(int f)
 
 	bp = buf; blen = sizeof(buf);
 	qword_adduint(&bp, &blen, uid);
-	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
+	qword_adduint(&bp, &blen, time(0) + default_ttl);
 	if (rv >= 0) {
 		qword_adduint(&bp, &blen, ngroups);
 		for (i=0; i<ngroups; i++)
@@ -968,7 +968,7 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
 	ssize_t err;
 
 	if (ttl <= 1)
-		ttl = DEFAULT_TTL;
+		ttl = default_ttl;
 
 	qword_add(&bp, &blen, domain);
 	qword_add(&bp, &blen, path);

@@ -34,9 +34,10 @@ Turn on debugging. Valid kinds are: all, auth, call, general and parse.
 .TP
 .BR \-l " or " \-\-log\-auth
 Enable logging of responses to authentication and access requests from
-nfsd.  Each response is then cached by the kernel for 30 minutes, and
-will be refreshed after 15 minutes if the relevant client remains
-active.
+nfsd.  Each response is then cached by the kernel for 30 minutes (or as set by
+.B \-\-ttl
+below), and will be refreshed after 15 minutes (half the ttl time) if
+the relevant client remains active.
 Note that
 .B -l
 is equivalent to
@@ -65,6 +66,17 @@ can increase the burden of updating the cache slightly, but can make the
 log messages produced by the
 .B -l
 option easier to read.
+.TP
+.B \-T " or " \-\-ttl
+Provide a time-to-live (TTL) for cached information given to the kernel.
+The kernel will normally request an update if the information is needed
+after half of this time has expired.  Increasing the provided number,
+which is in seconds, reduces the rate of cache update requests, and this
+is particularly noticeable when these requests are logged with
+.BR \-l .
+However increasing also means that changes to hostname to address
+mappings can take longer to be noticed.
+The default TTL is 1800 (30 minutes).
 .TP
 .B \-F " or " \-\-foreground
 Run in foreground (do not daemonize)
@@ -107,6 +119,7 @@ Values recognized in the
 .B [exportd]
 section include 
 .B cache\-use\-ipaddr ,
+.BR ttl ,
 .BR manage-gids ", and"
 .B debug 
 which each have the same effect as the option with the same name.

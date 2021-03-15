@@ -105,7 +105,8 @@ typedef struct mexport {
 } nfs_export;
 
 #define HASH_TABLE_SIZE 1021
-#define DEFAULT_TTL	(30 * 60)
+
+extern int default_ttl;
 
 typedef struct _exp_hash_entry {
 	nfs_export * p_first;

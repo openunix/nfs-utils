@@ -76,9 +76,10 @@ static struct option longopts[] =
 	{ "no-udp", 0, 0, 'u' },
 	{ "log-auth", 0, 0, 'l'},
 	{ "cache-use-ipaddr", 0, 0, 'i'},
+	{ "ttl", 1, 0, 'T'},
 	{ NULL, 0, 0, 0 }
 };
-static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gli";
+static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gliT:";
 
 #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
 #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
@@ -672,6 +673,7 @@ inline static void
 read_mountd_conf(char **argv)
 {
 	char	*s;
+	int	ttl;
 
 	conf_init_file(NFS_CONFFILE);
 
@@ -706,6 +708,10 @@ read_mountd_conf(char **argv)
 		else
 			NFSCTL_VERUNSET(nfs_version, vers);
 	}
+
+	ttl = conf_get_num("mountd", "ttl", default_ttl);
+	if (ttl > 0)
+		default_ttl = ttl;
 }
 
 int
@@ -715,6 +721,7 @@ main(int argc, char **argv)
 	unsigned int listeners = 0;
 	int	foreground = 0;
 	int	c;
+	int	ttl;
 	struct sigaction sa;
 	struct rlimit rlim;
 
@@ -808,6 +815,15 @@ main(int argc, char **argv)
 			break;
 		case 'i':
 			use_ipaddr = 2;
+			break;
+		case 'T':
+			ttl = atoi(optarg);
+			if (ttl <= 0) {
+				fprintf(stderr, "%s: bad ttl number of seconds: %s\n",
+					argv[0], optarg);
+				usage(argv[0], 1);
+			}
+			default_ttl = ttl;
 			break;
 		case 0:
 			break;
@@ -924,7 +940,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
-"	[-l|--log-auth] [-i|--cache-use-ipaddr]\n"
+"	[-l|--log-auth] [-i|--cache-use-ipaddr] [-T|--ttl ttl]\n"
 "	[-o num|--descriptors num]\n"
 "	[-p|--port port] [-V version|--nfs-version version]\n"
 "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
