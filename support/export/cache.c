@@ -42,13 +42,6 @@
 #include "blkid/blkid.h"
 #endif
 
-/*
- * Invoked by RPC service loop
- */
-void	cache_set_fds(fd_set *fdset);
-int	cache_process_req(fd_set *readfds);
-void cache_process_loop(void);
-
 enum nfsd_fsid {
 	FSID_DEV = 0,
 	FSID_NUM,
@@ -1537,6 +1530,7 @@ void cache_process_loop(void)
 	for (;;) {
 
 		cache_set_fds(&readfds);
+		v4clients_set_fds(&readfds);
 
 		selret = select(FD_SETSIZE, &readfds,
 				(void *) 0, (void *) 0, (struct timeval *) 0);
@@ -1552,6 +1546,7 @@ void cache_process_loop(void)
 
 		default:
 			cache_process_req(&readfds);
+			v4clients_process(&readfds);
 		}
 	}
 }

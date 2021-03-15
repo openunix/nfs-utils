@@ -12,7 +12,8 @@ EXTRA_DIST	= mount.x
 noinst_LIBRARIES = libexport.a
 libexport_a_SOURCES = client.c export.c hostname.c \
 		      xtab.c mount_clnt.c mount_xdr.c \
-			  cache.c auth.c v4root.c fsloc.c
+		      cache.c auth.c v4root.c fsloc.c \
+		      v4clients.c
 BUILT_SOURCES 	= $(GENFILES)
 
 noinst_HEADERS = mount.h

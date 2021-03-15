@@ -31,6 +31,7 @@
 #include "pseudoflavors.h"
 #include "nfsd_path.h"
 #include "nfslib.h"
+#include "export.h"
 
 extern void my_svc_run(void);
 
@@ -924,6 +925,7 @@ main(int argc, char **argv)
 	nfsd_path_init();
 	/* Open files now to avoid sharing descriptors among forked processes */
 	cache_open();
+	v4clients_init();
 
 	xlog(L_NOTICE, "Version " VERSION " starting");
 	my_svc_run();

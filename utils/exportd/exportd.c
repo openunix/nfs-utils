@@ -297,6 +297,7 @@ main(int argc, char **argv)
 
 	/* Open files now to avoid sharing descriptors among forked processes */
 	cache_open();
+	v4clients_init();
 
 	/* Process incoming upcalls */
 	cache_process_loop();
