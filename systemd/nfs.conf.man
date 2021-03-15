@@ -132,6 +132,7 @@ but on the server, this will resolve to the path
 .B exportd
 Recognized values:
 .BR threads ,
+.BR cache-use-upaddr ,
 .BR state-directory-path
 
 See
@@ -196,6 +197,7 @@ Recognized values:
 .BR port ,
 .BR threads ,
 .BR reverse-lookup ,
+.BR cache-use-upaddr ,
 .BR state-directory-path ,
 .BR ha-callout .
 

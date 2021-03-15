@@ -75,9 +75,10 @@ static struct option longopts[] =
 	{ "manage-gids", 0, 0, 'g' },
 	{ "no-udp", 0, 0, 'u' },
 	{ "log-auth", 0, 0, 'l'},
+	{ "cache-use-ipaddr", 0, 0, 'i'},
 	{ NULL, 0, 0, 0 }
 };
-static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gl";
+static char shortopts[] = "o:nFd:p:P:hH:N:V:vurs:t:gli";
 
 #define NFSVERSBIT(vers)	(0x1 << (vers - 1))
 #define NFSVERSBIT_ALL		(NFSVERSBIT(2) | NFSVERSBIT(3) | NFSVERSBIT(4))
@@ -681,6 +682,8 @@ read_mountd_conf(char **argv)
 	num_threads = conf_get_num("mountd", "threads", num_threads);
 	reverse_resolve = conf_get_bool("mountd", "reverse-lookup", reverse_resolve);
 	ha_callout_prog = conf_get_str("mountd", "ha-callout");
+	if (conf_get_bool("mountd", "cache-use-ipaddr", 0))
+		use_ipaddr = 2;
 
 	s = conf_get_str("mountd", "state-directory-path");
 	if (s && !state_setup_basedir(argv[0], s))
@@ -803,6 +806,9 @@ main(int argc, char **argv)
 		case 'l':
 			xlog_sconfig("auth", 1);
 			break;
+		case 'i':
+			use_ipaddr = 2;
+			break;
 		case 0:
 			break;
 		case '?':
@@ -918,7 +924,7 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 "Usage: %s [-F|--foreground] [-h|--help] [-v|--version] [-d kind|--debug kind]\n"
-"	[-l|--log-auth]\n"
+"	[-l|--log-auth] [-i|--cache-use-ipaddr]\n"
 "	[-o num|--descriptors num]\n"
 "	[-p|--port port] [-V version|--nfs-version version]\n"
 "	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"

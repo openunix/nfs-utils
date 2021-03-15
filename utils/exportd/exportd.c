@@ -45,9 +45,10 @@ static struct option longopts[] =
 	{ "manage-gids", 0, 0, 'g' },
 	{ "num-threads", 1, 0, 't' },
 	{ "log-auth", 0, 0, 'l' },
+	{ "cache-use-ipaddr", 0, 0, 'i' },
 	{ NULL, 0, 0, 0 }
 };
-static char shortopts[] = "d:fghs:t:l";
+static char shortopts[] = "d:fghs:t:li";
 
 /*
  * Signal handlers.
@@ -177,13 +178,13 @@ usage(const char *prog, int n)
 {
 	fprintf(stderr,
 		"Usage: %s [-f|--foreground] [-h|--help] [-d kind|--debug kind]\n"
-"	[-g|--manage-gids] [-l|--log-auth]\n"
+"	[-g|--manage-gids] [-l|--log-auth] [-i|--cache-use-ipaddr]\n"
 "	[-s|--state-directory-path path]\n"
 "	[-t num|--num-threads=num]\n", prog);
 	exit(n);
 }
 
-inline static void 
+inline static void
 read_exportd_conf(char *progname, char **argv)
 {
 	char *s;
@@ -194,6 +195,8 @@ read_exportd_conf(char *progname, char **argv)
 
 	manage_gids = conf_get_bool("exportd", "manage-gids", manage_gids);
 	num_threads = conf_get_num("exportd", "threads", num_threads);
+	if (conf_get_bool("mountd", "cache-use-ipaddr", 0))
+		use_ipaddr = 2;
 
 	s = conf_get_str("exportd", "state-directory-path");
 	if (s && !state_setup_basedir(argv[0], s))
@@ -236,6 +239,9 @@ main(int argc, char **argv)
 		case 'h':
 			usage(progname, 0);
 			break;
+		case 'i':
+			use_ipaddr = 2;
+			break;
 		case 's':
 			if (!state_setup_basedir(argv[0], optarg))
 				exit(1);
@@ -252,8 +258,8 @@ main(int argc, char **argv)
 
 	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab))
 		return 1;
-	
-	if (!foreground) 
+
+	if (!foreground)
 		xlog_stderr(0);
 
 	daemon_init(foreground);

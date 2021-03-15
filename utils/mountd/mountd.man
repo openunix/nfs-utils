@@ -112,6 +112,23 @@ section.
 will always log authentication responses to MOUNT requests when NFSv3 is
 used, but to get similar logs for NFSv4, this option is required.
 .TP
+.BR \-i " or " \-\-cache\-use\-ipaddr
+Normally each client IP address is matched against each host identifier
+(name, wildcard, netgroup etc) found in
+.B /etc/exports
+and a combined identity is formed from all matching identifiers.
+Often many clients will map to the same combined identity so performing
+this mapping reduces the number of distinct access details that the
+kernel needs to store.
+Specifying the
+.B \-i
+option suppresses this mapping so that access to each filesystem is
+requested and cached separately for each client IP address.  Doing this
+can increase the burden of updating the cache slightly, but can make the
+log messages produced by the
+.B -l
+option easier to read.
+.TP
 .B \-F " or " \-\-foreground
 Run in foreground (do not daemonize)
 .TP
@@ -242,6 +259,7 @@ Values recognized in the
 .B [mountd]
 section include
 .BR manage-gids ,
+.BR cache\-use\-ipaddr ,
 .BR descriptors ,
 .BR port ,
 .BR threads ,
