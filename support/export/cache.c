@@ -114,6 +114,7 @@ static void auth_unix_ip(int f)
 	char class[20];
 	char ipaddr[INET6_ADDRSTRLEN + 1];
 	char *client = NULL;
+	struct addrinfo *ai = NULL;
 	struct addrinfo *tmp = NULL;
 	char buf[RPC_CHAN_BUF_SIZE], *bp;
 	int blen;
@@ -139,21 +140,17 @@ static void auth_unix_ip(int f)
 
 	auth_reload();
 
-	/* addr is a valid, interesting address, find the domain name... */
-	if (!use_ipaddr) {
-		struct addrinfo *ai = NULL;
-
-		ai = client_resolve(tmp->ai_addr);
-		if (ai) {
-			client = client_compose(ai);
-			nfs_freeaddrinfo(ai);
-		}
+	/* addr is a valid address, find the domain name... */
+	ai = client_resolve(tmp->ai_addr);
+	if (ai) {
+		client = client_compose(ai);
+		nfs_freeaddrinfo(ai);
 	}
 	bp = buf; blen = sizeof(buf);
 	qword_add(&bp, &blen, "nfsd");
 	qword_add(&bp, &blen, ipaddr);
 	qword_adduint(&bp, &blen, time(0) + DEFAULT_TTL);
-	if (use_ipaddr) {
+	if (use_ipaddr && client) {
 		memmove(ipaddr + 1, ipaddr, strlen(ipaddr) + 1);
 		ipaddr[0] = '$';
 		qword_add(&bp, &blen, ipaddr);
