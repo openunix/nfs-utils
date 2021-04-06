@@ -383,7 +383,7 @@ unexportfs_parsed(char *hname, char *path, int verbose)
 	 * so need to deal with it.
 	*/
 	size_t nlen = strlen(path);
-	while (path[nlen - 1] == '/')
+	while ((nlen > 1) && (path[nlen - 1] == '/'))
 		nlen--;
 
 	for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
