@@ -892,6 +892,29 @@ conf_get_str_with_def(const char *section, const char *tag, char *def)
 }
 
 /*
+ * Retrieve an entry without interpreting its contents
+ */
+char *
+conf_get_entry(const char *section, const char *arg, const char *tag)
+{
+	struct conf_binding *cb;
+
+	cb = LIST_FIRST (&conf_bindings[conf_hash (section)]);
+	for (; cb; cb = LIST_NEXT (cb, link)) {
+		if (strcasecmp(section, cb->section) != 0)
+			continue;
+		if (arg && (cb->arg == NULL || strcasecmp(arg, cb->arg) != 0))
+			continue;
+		if (!arg && cb->arg)
+			continue;
+		if (strcasecmp(tag, cb->tag) != 0)
+			continue;
+		return cb->value;
+	}
+	return 0;
+}
+
+/*
  * Find a section that may or may not have an argument
  */
 char *
