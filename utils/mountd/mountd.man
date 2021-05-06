@@ -19,7 +19,7 @@ clients and provides details of access permissions.
 The NFS server
 .RI ( nfsd )
 maintains a cache of authentication and authorization information which
-is used to identify the source of each requent, and then what access
+is used to identify the source of each request, and then what access
 permissions that source has to any local filesystem.  When required
 information is not found in the cache, the server sends a request to
 .B mountd
