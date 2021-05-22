@@ -169,17 +169,27 @@ static int gssd_get_single_krb5_cred(krb5_context context,
 static int query_krb5_ccache(const char* cred_cache, char **ret_princname,
 		char **ret_realm);
 
-static void release_ple(krb5_context context, struct gssd_k5_kt_princ *ple)
+static void release_ple_locked(krb5_context context,
+			       struct gssd_k5_kt_princ *ple)
 {
 	if (--ple->refcount)
 		return;
 
-	printerr(3, "freeing cached principal (ccname=%s, realm=%s)\n", ple->ccname, ple->realm);
+	printerr(3, "freeing cached principal (ccname=%s, realm=%s)\n",
+		 ple->ccname, ple->realm);
 	krb5_free_principal(context, ple->princ);
 	free(ple->ccname);
 	free(ple->realm);
 	free(ple);
 }
+
+static void release_ple(krb5_context context, struct gssd_k5_kt_princ *ple)
+{
+	pthread_mutex_lock(&ple_lock);
+	release_ple_locked(context, ple);
+	pthread_mutex_unlock(&ple_lock);
+}
+
 
 /*
  * Called from the scandir function to weed out potential krb5
@@ -1420,7 +1430,7 @@ gssd_destroy_krb5_principals(int destroy_machine_creds)
 			}
 		}
 
-		release_ple(context, ple);
+		release_ple_locked(context, ple);
 	}
 	pthread_mutex_unlock(&ple_lock);
 	krb5_free_context(context);
