@@ -188,7 +188,7 @@ main(int argc, char **argv)
 
 	if (optind == argc && ! f_all) {
 		if (force_flush) {
-			cache_flush(1);
+			cache_flush();
 			free_state_path_names(&etab);
 			return 0;
 		} else {
@@ -235,7 +235,7 @@ main(int argc, char **argv)
 				unexportfs(argv[i], f_verbose);
 	}
 	xtab_export_write();
-	cache_flush(force_flush);
+	cache_flush();
 	free_state_path_names(&etab);
 	export_freeall();
 

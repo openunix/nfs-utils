@@ -80,7 +80,7 @@ check_useipaddr(void)
 		use_ipaddr = 0;
 
 	if (use_ipaddr != old_use_ipaddr)
-		cache_flush(1);
+		cache_flush();
 }
 
 unsigned int
