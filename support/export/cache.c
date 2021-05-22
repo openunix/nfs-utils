@@ -981,7 +981,8 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
 		write_secinfo(&bp, &blen, exp, flag_mask);
 		if (exp->e_uuid == NULL || different_fs) {
 			char u[16];
-			if (uuid_by_path(path, 0, 16, u)) {
+			if ((exp->e_flags & flag_mask & NFSEXP_FSID) == 0 &&
+			    uuid_by_path(path, 0, 16, u)) {
 				qword_add(&bp, &blen, "uuid");
 				qword_addhex(&bp, &blen, u, 16);
 			}
