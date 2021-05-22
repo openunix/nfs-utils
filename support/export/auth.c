@@ -41,8 +41,6 @@ static nfs_client my_client;
 
 extern int use_ipaddr;
 
-extern struct state_paths etab;
-
 /*
 void
 auth_init(void)

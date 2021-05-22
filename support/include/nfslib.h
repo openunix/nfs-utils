@@ -106,6 +106,7 @@ void			dupexportent(struct exportent *dst,
 					struct exportent *src);
 int			updateexportent(struct exportent *eep, char *options);
 
+extern struct state_paths rmtab;
 int			setrmtabent(char *type);
 struct rmtabent *	getrmtabent(int log, long *pos);
 void			putrmtabent(struct rmtabent *xep, long *pos);

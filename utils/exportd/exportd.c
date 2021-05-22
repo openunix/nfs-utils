@@ -25,8 +25,6 @@
 
 extern void my_svc_run(void);
 
-struct state_paths etab;
-
 /* Number of mountd threads to start.   Default is 1 and
  * that's probably enough unless you need hundreds of
  * clients to be able to mount at once.  */

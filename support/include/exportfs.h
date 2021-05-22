@@ -145,6 +145,7 @@ nfs_export *			export_create(struct exportent *, int canonical);
 void				exportent_release(struct exportent *);
 void				export_freeall(void);
 
+extern struct state_paths etab;
 int				xtab_export_read(void);
 int				xtab_export_write(void);
 

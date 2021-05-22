@@ -52,8 +52,6 @@ static void release_lockfile(void);
 static const char *lockfile = EXP_LOCKFILE;
 static int _lockfd = -1;
 
-struct state_paths etab;
-
 /*
  * If we aren't careful, changes made by exportfs can be lost
  * when multiple exports process run at once:

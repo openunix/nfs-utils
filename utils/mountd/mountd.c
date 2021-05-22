@@ -43,9 +43,6 @@ int reverse_resolve = 0;
 int manage_gids;
 int use_ipaddr = -1;
 
-struct state_paths etab;
-struct state_paths rmtab;
-
 /* PRC: a high-availability callout program can be specified with -H
  * When this is done, the program will receive callouts whenever clients
  * send mount or unmount requests -- the callout is not needed for 2.6 kernel */
