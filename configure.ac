@@ -335,6 +335,13 @@ AC_CHECK_HEADERS([sched.h], [], [])
 AC_CHECK_FUNCS([unshare fstatat statx], [] , [])
 AC_LIBPTHREAD([])
 
+# rpc/rpc.h can come from the glibc or from libtirpc
+nfsutils_save_CPPFLAGS="${CPPFLAGS}"
+CPPFLAGS="${CPPFLAGS} ${TIRPC_CFLAGS}"
+AC_CHECK_HEADER(rpc/rpc.h, ,
+                AC_MSG_ERROR([Header file rpc/rpc.h not found - maybe try building with --enable-tirpc]))
+CPPFLAGS="${nfsutils_save_CPPFLAGS}"
+
 if test "$enable_nfsv4" = yes; then
   dnl check for libevent libraries and headers
   AC_LIBEVENT
