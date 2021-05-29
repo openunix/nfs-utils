@@ -80,6 +80,8 @@
 #include "nfslib.h"
 #include "gss_names.h"
 
+extern pthread_mutex_t clp_lock;
+
 /* Encryption types supported by the kernel rpcsec_gss code */
 int num_krb5_enctypes = 0;
 krb5_enctype *krb5_enctypes = NULL;
@@ -723,22 +725,133 @@ out_return_error:
 	goto out;
 }
 
-void
-handle_krb5_upcall(struct clnt_upcall_info *info)
+static struct clnt_upcall_info *
+alloc_upcall_info(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
+		  char *target, char *service)
 {
-	struct clnt_info *clp = info->clp;
+	struct clnt_upcall_info *info;
 
-	printerr(2, "\n%s: uid %d (%s)\n", __func__, info->uid, clp->relpath);
+	info = malloc(sizeof(struct clnt_upcall_info));
+	if (info == NULL)
+		return NULL;
 
-	process_krb5_upcall(clp, info->uid, clp->krb5_fd, NULL, NULL, NULL);
+	memset(info, 0, sizeof(*info));
+	pthread_mutex_lock(&clp_lock);
+	clp->refcount++;
+	pthread_mutex_unlock(&clp_lock);
+	info->clp = clp;
+	info->uid = uid;
+	info->fd = fd;
+	if (srchost) {
+		info->srchost = strdup(srchost);
+		if (info->srchost == NULL)
+			goto out_info;
+	}
+	if (target) {
+		info->target = strdup(target);
+		if (info->target == NULL)
+			goto out_srchost;
+	}
+	if (service) {
+		info->service = strdup(service);
+		if (info->service == NULL)
+			goto out_target;
+	}
+
+out:
+	return info;
+
+out_target:
+	if (info->target)
+		free(info->target);
+out_srchost:
+	if (info->srchost)
+		free(info->srchost);
+out_info:
+	free(info);
+	info = NULL;
+	goto out;
+}
+
+void free_upcall_info(struct clnt_upcall_info *info)
+{
+	gssd_free_client(info->clp);
+	if (info->service)
+		free(info->service);
+	if (info->target)
+		free(info->target);
+	if (info->srchost)
+		free(info->srchost);
+	free(info);
+}
+
+static void
+gssd_work_thread_fn(struct clnt_upcall_info *info)
+{
+	process_krb5_upcall(info->clp, info->uid, info->fd, info->srchost, info->target, info->service);
 	free_upcall_info(info);
 }
 
-void
-handle_gssd_upcall(struct clnt_upcall_info *info)
+static int
+start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
 {
-	struct clnt_info	*clp = info->clp;
+	pthread_attr_t attr;
+	pthread_t th;
+	int ret;
+
+	ret = pthread_attr_init(&attr);
+	if (ret != 0) {
+		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
+			 ret, strerror(errno));
+		return ret;
+	}
+	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (ret != 0) {
+		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
+			 "%s\n", ret, strerror(errno));
+		return ret;
+	}
+
+	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
+	if (ret != 0)
+		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+			 ret, strerror(errno));
+	return ret;
+}
+
+void
+handle_krb5_upcall(struct clnt_info *clp)
+{
 	uid_t			uid;
+	struct clnt_upcall_info	*info;
+	int			err;
+
+	if (read(clp->krb5_fd, &uid, sizeof(uid)) < (ssize_t)sizeof(uid)) {
+		printerr(0, "WARNING: failed reading uid from krb5 "
+			    "upcall pipe: %s\n", strerror(errno));
+		return;
+	}
+	printerr(2, "\n%s: uid %d (%s)\n", __func__, uid, clp->relpath);
+
+	info = alloc_upcall_info(clp, uid, clp->krb5_fd, NULL, NULL, NULL);
+	if (info == NULL) {
+		printerr(0, "%s: failed to allocate clnt_upcall_info\n", __func__);
+		do_error_downcall(clp->krb5_fd, uid, -EACCES);
+		return;
+	}
+	err = start_upcall_thread(gssd_work_thread_fn, info);
+	if (err != 0) {
+		do_error_downcall(clp->krb5_fd, uid, -EACCES);
+		free_upcall_info(info);
+	}
+}
+
+void
+handle_gssd_upcall(struct clnt_info *clp)
+{
+	uid_t			uid;
+	char			lbuf[RPC_CHAN_BUF_SIZE];
+	int			lbuflen = 0;
 	char			*p;
 	char			*mech = NULL;
 	char			*uidstr = NULL;
@@ -746,20 +859,22 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
 	char			*service = NULL;
 	char			*srchost = NULL;
 	char			*enctypes = NULL;
-	char			*upcall_str;
-	char			*pbuf = info->lbuf;
 	pthread_t tid = pthread_self();
+	struct clnt_upcall_info	*info;
+	int			err;
 
-	printerr(2, "\n%s(0x%x): '%s' (%s)\n", __func__, tid, 
-		info->lbuf, clp->relpath);
-
-	upcall_str = strdup(info->lbuf);
-	if (upcall_str == NULL) {
-		printerr(0, "ERROR: malloc failure\n");
-		goto out_nomem;
+	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
+	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+		printerr(0, "WARNING: handle_gssd_upcall: "
+			    "failed reading request\n");
+		return;
 	}
+	lbuf[lbuflen-1] = 0;
 
-	while ((p = strsep(&pbuf, " "))) {
+	printerr(2, "\n%s(0x%x): '%s' (%s)\n", __func__, tid,
+		 lbuf, clp->relpath);
+
+	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
 		if (!strncmp(p, "mech=", strlen("mech=")))
 			mech = p + strlen("mech=");
 		else if (!strncmp(p, "uid=", strlen("uid=")))
@@ -777,8 +892,8 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
 	if (!mech || strlen(mech) < 1) {
 		printerr(0, "WARNING: handle_gssd_upcall: "
 			    "failed to find gss mechanism name "
-			    "in upcall string '%s'\n", upcall_str);
-		goto out;
+			    "in upcall string '%s'\n", lbuf);
+		return;
 	}
 
 	if (uidstr) {
@@ -790,21 +905,21 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
 	if (!uidstr) {
 		printerr(0, "WARNING: handle_gssd_upcall: "
 			    "failed to find uid "
-			    "in upcall string '%s'\n", upcall_str);
-		goto out;
+			    "in upcall string '%s'\n", lbuf);
+		return;
 	}
 
 	if (enctypes && parse_enctypes(enctypes) != 0) {
 		printerr(0, "WARNING: handle_gssd_upcall: "
 			 "parsing encryption types failed: errno %d\n", errno);
-		goto out;
+		return;
 	}
 
 	if (target && strlen(target) < 1) {
 		printerr(0, "WARNING: handle_gssd_upcall: "
 			 "failed to parse target name "
-			 "in upcall string '%s'\n", upcall_str);
-		goto out;
+			 "in upcall string '%s'\n", lbuf);
+		return;
 	}
 
 	/*
@@ -818,21 +933,26 @@ handle_gssd_upcall(struct clnt_upcall_info *info)
 	if (service && strlen(service) < 1) {
 		printerr(0, "WARNING: handle_gssd_upcall: "
 			 "failed to parse service type "
-			 "in upcall string '%s'\n", upcall_str);
-		goto out;
+			 "in upcall string '%s'\n", lbuf);
+		return;
 	}
 
-	if (strcmp(mech, "krb5") == 0 && clp->servername)
-		process_krb5_upcall(clp, uid, clp->gssd_fd, srchost, target, service);
-	else {
+	if (strcmp(mech, "krb5") == 0 && clp->servername) {
+		info = alloc_upcall_info(clp, uid, clp->gssd_fd, srchost, target, service);
+		if (info == NULL) {
+			printerr(0, "%s: failed to allocate clnt_upcall_info\n", __func__);
+			do_error_downcall(clp->gssd_fd, uid, -EACCES);
+			return;
+		}
+		err = start_upcall_thread(gssd_work_thread_fn, info);
+		if (err != 0) {
+			do_error_downcall(clp->gssd_fd, uid, -EACCES);
+			free_upcall_info(info);
+		}
+	} else {
 		if (clp->servername)
 			printerr(0, "WARNING: handle_gssd_upcall: "
 				 "received unknown gss mech '%s'\n", mech);
 		do_error_downcall(clp->gssd_fd, uid, -EACCES);
 	}
-out:
-	free(upcall_str);
-out_nomem:
-	free_upcall_info(info);
-	return;
 }

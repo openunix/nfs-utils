@@ -84,14 +84,17 @@ struct clnt_info {
 
 struct clnt_upcall_info {
 	struct clnt_info 	*clp;
-	char			lbuf[RPC_CHAN_BUF_SIZE];
-	int			lbuflen;
 	uid_t			uid;
+	int			fd;
+	char			*srchost;
+	char			*target;
+	char			*service;
 };
 
-void handle_krb5_upcall(struct clnt_upcall_info *clp);
-void handle_gssd_upcall(struct clnt_upcall_info *clp);
+void handle_krb5_upcall(struct clnt_info *clp);
+void handle_gssd_upcall(struct clnt_info *clp);
 void free_upcall_info(struct clnt_upcall_info *info);
+void gssd_free_client(struct clnt_info *clp);
 
 
 #endif /* _RPC_GSSD_H_ */

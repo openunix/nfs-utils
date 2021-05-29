@@ -364,7 +364,7 @@ out:
 /* Actually frees clp and fields that might be used from other
  * threads if was last reference.
  */
-static void
+void
 gssd_free_client(struct clnt_info *clp)
 {
 	int refcnt;
@@ -416,55 +416,6 @@ gssd_destroy_client(struct clnt_info *clp)
 
 static void gssd_scan(void);
 
-static int
-start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
-{
-	pthread_attr_t attr;
-	pthread_t th;
-	int ret;
-
-	ret = pthread_attr_init(&attr);
-	if (ret != 0) {
-		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
-			 ret, strerror(errno));
-		return ret;
-	}
-	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	if (ret != 0) {
-		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
-			 "%s\n", ret, strerror(errno));
-		return ret;
-	}
-
-	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
-	if (ret != 0)
-		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
-			 ret, strerror(errno));
-	return ret;
-}
-
-static struct clnt_upcall_info *alloc_upcall_info(struct clnt_info *clp)
-{
-	struct clnt_upcall_info *info;
-
-	info = malloc(sizeof(struct clnt_upcall_info));
-	if (info == NULL)
-		return NULL;
-
-	pthread_mutex_lock(&clp_lock);
-	clp->refcount++;
-	pthread_mutex_unlock(&clp_lock);
-	info->clp = clp;
-
-	return info;
-}
-
-void free_upcall_info(struct clnt_upcall_info *info)
-{
-	gssd_free_client(info->clp);
-	free(info);
-}
-
 /* For each upcall read the upcall info into the buffer, then create a
  * thread in a detached state so that resources are released back into
  * the system without the need for a join.
@@ -473,44 +424,16 @@ static void
 gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
 {
 	struct clnt_info *clp = data;
-	struct clnt_upcall_info *info;
 
-	info = alloc_upcall_info(clp);
-	if (info == NULL)
-		return;
-
-	info->lbuflen = read(clp->gssd_fd, info->lbuf, sizeof(info->lbuf));
-	if (info->lbuflen <= 0 || info->lbuf[info->lbuflen-1] != '\n') {
-		printerr(0, "WARNING: %s: failed reading request\n", __func__);
-		free_upcall_info(info);
-		return;
-	}
-	info->lbuf[info->lbuflen-1] = 0;
-
-	if (start_upcall_thread(handle_gssd_upcall, info))
-		free_upcall_info(info);
+	handle_gssd_upcall(clp);
 }
 
 static void
 gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
 {
 	struct clnt_info *clp = data;
-	struct clnt_upcall_info *info;
 
-	info = alloc_upcall_info(clp);
-	if (info == NULL)
-		return;
-
-	if (read(clp->krb5_fd, &info->uid,
-			sizeof(info->uid)) < (ssize_t)sizeof(info->uid)) {
-		printerr(0, "WARNING: %s: failed reading uid from krb5 "
-			 "upcall pipe: %s\n", __func__, strerror(errno));
-		free_upcall_info(info);
-		return;
-	}
-
-	if (start_upcall_thread(handle_krb5_upcall, info))
-		free_upcall_info(info);
+	handle_krb5_upcall(clp);
 }
 
 static struct clnt_info *
