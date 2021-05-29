@@ -96,7 +96,28 @@ pthread_mutex_t clp_lock = PTHREAD_MUTEX_INITIALIZER;
 static bool signal_received = false;
 static struct event_base *evbase = NULL;
 
+int upcall_timeout = DEF_UPCALL_TIMEOUT;
+static bool cancel_timed_out_upcalls = false;
+
 TAILQ_HEAD(topdir_list_head, topdir) topdir_list;
+
+/*
+ * active_thread_list:
+ *
+ * 	used to track upcalls for timeout purposes.
+ *
+ * 	protected by the active_thread_list_lock mutex.
+ *
+ * 	upcall_thread_info structures are added to the tail of the list
+ * 	by start_upcall_thread(), so entries closer to the head of the list
+ * 	will be closer to hitting the upcall timeout.
+ *
+ * 	upcall_thread_info structures are removed from the list upon a
+ * 	sucessful join of the upcall thread by the watchdog thread (via
+ * 	scan_active_thread_list().
+ */
+TAILQ_HEAD(active_thread_list_head, upcall_thread_info) active_thread_list;
+pthread_mutex_t active_thread_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct topdir {
 	TAILQ_ENTRY(topdir) list;
@@ -434,6 +455,138 @@ gssd_clnt_krb5_cb(int UNUSED(fd), short UNUSED(which), void *data)
 	struct clnt_info *clp = data;
 
 	handle_krb5_upcall(clp);
+}
+
+/*
+ * scan_active_thread_list:
+ *
+ * Walks the active_thread_list, trying to join as many upcall threads as
+ * possible.  For threads that have terminated, the corresponding
+ * upcall_thread_info will be removed from the list and freed.  Threads that
+ * are still busy and have exceeded the upcall_timeout will cause an error to
+ * be logged and may be canceled (depending on the value of
+ * cancel_timed_out_upcalls).
+ *
+ * Returns the number of seconds that the watchdog thread should wait before
+ * calling scan_active_thread_list() again.
+ */
+static int
+scan_active_thread_list(void)
+{
+	struct upcall_thread_info *info;
+	struct timespec now;
+	unsigned int sleeptime;
+	bool sleeptime_set = false;
+	int err;
+	void *tret, *saveprev;
+
+	sleeptime = upcall_timeout;
+	pthread_mutex_lock(&active_thread_list_lock);
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	TAILQ_FOREACH(info, &active_thread_list, list) {
+		err = pthread_tryjoin_np(info->tid, &tret);
+		switch (err) {
+		case 0:
+			/*
+			 * The upcall thread has either completed successfully, or
+			 * has been canceled _and_ has acted on the cancellation request
+			 * (i.e. has hit a cancellation point).  We can now remove the
+			 * upcall_thread_info from the list and free it.
+			 */
+			if (tret == PTHREAD_CANCELED)
+				printerr(3, "watchdog: thread id 0x%lx cancelled successfully\n",
+						info->tid);
+			saveprev = info->list.tqe_prev;
+			TAILQ_REMOVE(&active_thread_list, info, list);
+			free(info);
+			info = saveprev;
+			break;
+		case EBUSY:
+			/*
+			 * The upcall thread is still running.  If the timeout has expired
+			 * then we either cancel the thread, log an error, and do an error
+			 * downcall to the kernel (cancel_timed_out_upcalls=true) or simply
+			 * log an error (cancel_timed_out_upcalls=false).  In either case,
+			 * the error is logged only once.
+			 */
+			if (now.tv_sec >= info->timeout.tv_sec) {
+				if (cancel_timed_out_upcalls && !(info->flags & UPCALL_THREAD_CANCELED)) {
+					printerr(0, "watchdog: thread id 0x%lx timed out\n",
+							info->tid);
+					pthread_cancel(info->tid);
+					info->flags |= (UPCALL_THREAD_CANCELED|UPCALL_THREAD_WARNED);
+					do_error_downcall(info->fd, info->uid, -ETIMEDOUT);
+				} else {
+					if (!(info->flags & UPCALL_THREAD_WARNED)) {
+						printerr(0, "watchdog: thread id 0x%lx running for %ld seconds\n",
+								info->tid,
+								now.tv_sec - info->timeout.tv_sec + upcall_timeout);
+						info->flags |= UPCALL_THREAD_WARNED;
+					}
+				}
+			} else if (!sleeptime_set) {
+			/*
+			 * The upcall thread is still running, but the timeout has not yet
+			 * expired.  Calculate the time remaining until the timeout will
+			 * expire.  This is the amount of time the watchdog thread will
+			 * wait before running again.  We only need to do this for the busy
+			 * thread closest to the head of the list - entries appearing later
+			 * in the list will time out later.
+			 */
+				sleeptime = info->timeout.tv_sec - now.tv_sec;
+				sleeptime_set = true;
+			}
+			break;
+		default:
+			/* EDEADLK, EINVAL, and ESRCH... none of which should happen! */
+			printerr(0, "watchdog: attempt to join thread id 0x%lx returned %d (%s)!\n",
+					info->tid, err, strerror(err));
+			break;
+		}
+	}
+	pthread_mutex_unlock(&active_thread_list_lock);
+
+	return sleeptime;
+}
+
+static void *
+watchdog_thread_fn(void *UNUSED(arg))
+{
+	unsigned int sleeptime;
+
+	for (;;) {
+		sleeptime = scan_active_thread_list();
+		printerr(4, "watchdog: sleeping %u secs\n", sleeptime);
+		sleep(sleeptime);
+	}
+	return (void *)0;
+}
+
+static int
+start_watchdog_thread(void)
+{
+	pthread_attr_t attr;
+	pthread_t th;
+	int ret;
+
+	ret = pthread_attr_init(&attr);
+	if (ret != 0) {
+		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
+			 ret, strerror(errno));
+		return ret;
+	}
+	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	if (ret != 0) {
+		printerr(0, "ERROR: failed to create pthread attr: ret %d: %s\n",
+			 ret, strerror(errno));
+		return ret;
+	}
+	ret = pthread_create(&th, &attr, watchdog_thread_fn, NULL);
+	if (ret != 0) {
+		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
+			 ret, strerror(errno));
+	}
+	return ret;
 }
 
 static struct clnt_info *
@@ -825,7 +978,7 @@ sig_die(int signal)
 static void
 usage(char *progname)
 {
-	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-H]\n",
+	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-H] [-U upcall timeout] [-C]\n",
 		progname);
 	exit(1);
 }
@@ -846,6 +999,9 @@ read_gss_conf(void)
 #endif
 	context_timeout = conf_get_num("gssd", "context-timeout", context_timeout);
 	rpc_timeout = conf_get_num("gssd", "rpc-timeout", rpc_timeout);
+	upcall_timeout = conf_get_num("gssd", "upcall-timeout", upcall_timeout);
+	cancel_timed_out_upcalls = conf_get_bool("gssd", "cancel-timed-out-upcalls",
+						cancel_timed_out_upcalls);
 	s = conf_get_str("gssd", "pipefs-directory");
 	if (!s)
 		s = conf_get_str("general", "pipefs-directory");
@@ -887,7 +1043,7 @@ main(int argc, char *argv[])
 	verbosity = conf_get_num("gssd", "verbosity", verbosity);
 	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
 
-	while ((opt = getopt(argc, argv, "HDfvrlmnMp:k:d:t:T:R:")) != -1) {
+	while ((opt = getopt(argc, argv, "HDfvrlmnMp:k:d:t:T:R:U:C")) != -1) {
 		switch (opt) {
 			case 'f':
 				fg = 1;
@@ -937,6 +1093,12 @@ main(int argc, char *argv[])
 				break;
 			case 'H':
 				set_home = false;
+				break;
+			case 'U':
+				upcall_timeout = atoi(optarg);
+				break;
+			case 'C':
+				cancel_timed_out_upcalls = true;
 				break;
 			default:
 				usage(argv[0]);
@@ -1010,6 +1172,11 @@ main(int argc, char *argv[])
 	else
 		progname = argv[0];
 
+	if (upcall_timeout > MAX_UPCALL_TIMEOUT)
+		upcall_timeout = MAX_UPCALL_TIMEOUT;
+	else if (upcall_timeout < MIN_UPCALL_TIMEOUT)
+		upcall_timeout = MIN_UPCALL_TIMEOUT;
+
 	initerr(progname, verbosity, fg);
 #ifdef HAVE_LIBTIRPC_SET_DEBUG
 	/*
@@ -1067,6 +1234,14 @@ main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 	event_add(inotify_ev, NULL);
+
+	TAILQ_INIT(&active_thread_list);
+
+	rc = start_watchdog_thread();
+	if (rc != 0) {
+		printerr(0, "ERROR: failed to start watchdog thread: %d\n", rc);
+		exit(EXIT_FAILURE);
+	}
 
 	TAILQ_INIT(&topdir_list);
 	gssd_scan();

@@ -81,10 +81,23 @@
 #include "gss_names.h"
 
 extern pthread_mutex_t clp_lock;
+extern pthread_mutex_t active_thread_list_lock;
+extern int upcall_timeout;
+extern TAILQ_HEAD(active_thread_list_head, upcall_thread_info) active_thread_list;
 
 /* Encryption types supported by the kernel rpcsec_gss code */
 int num_krb5_enctypes = 0;
 krb5_enctype *krb5_enctypes = NULL;
+
+/* Args for the cleanup_handler() */
+struct cleanup_args  {
+	OM_uint32 	*min_stat;
+	gss_buffer_t	acceptor;
+	gss_buffer_t	token;
+	struct authgss_private_data *pd;
+	AUTH		**auth;
+	CLIENT		**rpc_clnt;
+};
 
 /*
  * Parse the supported encryption type information
@@ -184,7 +197,7 @@ out_err:
 	return;
 }
 
-static int
+int
 do_error_downcall(int k5_fd, uid_t uid, int err)
 {
 	char	buf[1024];
@@ -608,27 +621,66 @@ out:
 }
 
 /*
- * this code uses the userland rpcsec gss library to create a krb5
- * context on behalf of the kernel
+ * cleanup_handler:
+ *
+ * Free any resources allocated by process_krb5_upcall().
+ *
+ * Runs upon normal termination of process_krb5_upcall as well as if the
+ * thread is canceled.
  */
 static void
-process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
-		    char *tgtname, char *service)
+cleanup_handler(void *arg)
 {
+	struct cleanup_args *args = (struct cleanup_args *)arg;
+
+	gss_release_buffer(args->min_stat, args->acceptor);
+	if (args->token->value)
+		free(args->token->value);
+#ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
+	if (args->pd->pd_ctx_hndl.length != 0 || args->pd->pd_ctx != 0)
+		authgss_free_private_data(args->pd);
+#endif
+	if (*args->auth)
+		AUTH_DESTROY(*args->auth);
+	if (*args->rpc_clnt)
+		clnt_destroy(*args->rpc_clnt);
+}
+
+/*
+ * process_krb5_upcall:
+ *
+ * this code uses the userland rpcsec gss library to create a krb5
+ * context on behalf of the kernel
+ *
+ * This is the meat of the upcall thread.  Note that cancelability is disabled
+ * and enabled at various points to ensure that any resources reserved by the
+ * lower level libraries are released safely.
+ */
+static void
+process_krb5_upcall(struct clnt_upcall_info *info)
+{
+	struct clnt_info	*clp = info->clp;
+	uid_t			uid = info->uid;
+	int			fd = info->fd;
+	char			*srchost = info->srchost;
+	char			*tgtname = info->target;
+	char			*service = info->service;
 	CLIENT			*rpc_clnt = NULL;
 	AUTH			*auth = NULL;
 	struct authgss_private_data pd;
 	gss_buffer_desc		token;
-	int			err, downcall_err = -EACCES;
+	int			err, downcall_err;
 	OM_uint32		maj_stat, min_stat, lifetime_rec;
 	gss_name_t		gacceptor = GSS_C_NO_NAME;
 	gss_OID			mech;
 	gss_buffer_desc		acceptor  = {0};
+	struct cleanup_args cleanup_args = {&min_stat, &acceptor, &token, &pd, &auth, &rpc_clnt};
 
 	token.length = 0;
 	token.value = NULL;
 	memset(&pd, 0, sizeof(struct authgss_private_data));
 
+	pthread_cleanup_push(cleanup_handler, &cleanup_args);
 	/*
 	 * If "service" is specified, then the kernel is indicating that
 	 * we must use machine credentials for this request.  (Regardless
@@ -650,6 +702,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
 	 * used for this case is not important.
 	 *
 	 */
+	downcall_err = -EACCES;
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
 				service == NULL)) {
 
@@ -670,15 +724,21 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
 			goto out_return_error;
 		}
 	}
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_testcancel();
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	if (!authgss_get_private_data(auth, &pd)) {
 		printerr(1, "WARNING: Failed to obtain authentication "
 			    "data for user with uid %d for server %s\n",
 			 uid, clp->servername);
 		goto out_return_error;
 	}
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_testcancel();
 
 	/* Grab the context lifetime and acceptor name out of the ctx. */
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
 				       &lifetime_rec, &mech, NULL, NULL, NULL);
 
@@ -690,37 +750,35 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *srchost,
 		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
 		gss_release_name(&min_stat, &gacceptor);
 	}
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_testcancel();
 
 	/*
 	 * The serialization can mean turning pd.pd_ctx into a lucid context. If
 	 * that happens then the pd.pd_ctx will be unusable, so we must never
 	 * try to use it after this point.
 	 */
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
 		printerr(1, "WARNING: Failed to serialize krb5 context for "
 			    "user with uid %d for server %s\n",
 			 uid, clp->servername);
 		goto out_return_error;
 	}
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_testcancel();
 
 	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
 
 out:
-	gss_release_buffer(&min_stat, &acceptor);
-	if (token.value)
-		free(token.value);
-#ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
-	if (pd.pd_ctx_hndl.length != 0 || pd.pd_ctx != 0)
-		authgss_free_private_data(&pd);
-#endif
-	if (auth)
-		AUTH_DESTROY(auth);
-	if (rpc_clnt)
-		clnt_destroy(rpc_clnt);
+	pthread_cleanup_pop(1);
 
 	return;
 
 out_return_error:
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_testcancel();
+
 	do_error_downcall(fd, uid, downcall_err);
 	goto out;
 }
@@ -786,36 +844,69 @@ void free_upcall_info(struct clnt_upcall_info *info)
 }
 
 static void
-gssd_work_thread_fn(struct clnt_upcall_info *info)
+cleanup_clnt_upcall_info(void *arg)
 {
-	process_krb5_upcall(info->clp, info->uid, info->fd, info->srchost, info->target, info->service);
+	struct clnt_upcall_info *info = (struct clnt_upcall_info *)arg;
+
 	free_upcall_info(info);
 }
 
+static void
+gssd_work_thread_fn(struct clnt_upcall_info *info)
+{
+	pthread_cleanup_push(cleanup_clnt_upcall_info, info);
+	process_krb5_upcall(info);
+	pthread_cleanup_pop(1);
+}
+
+static struct upcall_thread_info *
+alloc_upcall_thread_info(void)
+{
+	struct upcall_thread_info *info;
+
+	info = malloc(sizeof(struct upcall_thread_info));
+	if (info == NULL)
+		return NULL;
+	memset(info, 0, sizeof(*info));
+	return info;
+}
+
 static int
-start_upcall_thread(void (*func)(struct clnt_upcall_info *), void *info)
+start_upcall_thread(void (*func)(struct clnt_upcall_info *), struct clnt_upcall_info *info)
 {
 	pthread_attr_t attr;
 	pthread_t th;
+	struct upcall_thread_info *tinfo;
 	int ret;
+
+	tinfo = alloc_upcall_thread_info();
+	if (!tinfo)
+		return -ENOMEM;
+	tinfo->fd = info->fd;
+	tinfo->uid = info->uid;
 
 	ret = pthread_attr_init(&attr);
 	if (ret != 0) {
 		printerr(0, "ERROR: failed to init pthread attr: ret %d: %s\n",
 			 ret, strerror(errno));
-		return ret;
-	}
-	ret = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-	if (ret != 0) {
-		printerr(0, "ERROR: failed to create pthread attr: ret %d: "
-			 "%s\n", ret, strerror(errno));
+		free(tinfo);
 		return ret;
 	}
 
 	ret = pthread_create(&th, &attr, (void *)func, (void *)info);
-	if (ret != 0)
+	if (ret != 0) {
 		printerr(0, "ERROR: pthread_create failed: ret %d: %s\n",
 			 ret, strerror(errno));
+		free(tinfo);
+		return ret;
+	}
+	tinfo->tid = th;
+	pthread_mutex_lock(&active_thread_list_lock);
+	clock_gettime(CLOCK_MONOTONIC, &tinfo->timeout);
+	tinfo->timeout.tv_sec += upcall_timeout;
+	TAILQ_INSERT_TAIL(&active_thread_list, tinfo, list);
+	pthread_mutex_unlock(&active_thread_list_lock);
+
 	return ret;
 }
 
