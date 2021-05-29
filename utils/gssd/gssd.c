@@ -396,7 +396,7 @@ gssd_free_client(struct clnt_info *clp)
 	if (refcnt > 0)
 		return;
 
-	printerr(3, "freeing client %s\n", clp->relpath);
+	printerr(4, "freeing client %s\n", clp->relpath);
 
 	if (clp->krb5_fd >= 0)
 		close(clp->krb5_fd);
@@ -417,7 +417,7 @@ gssd_free_client(struct clnt_info *clp)
 static void
 gssd_destroy_client(struct clnt_info *clp)
 {
-	printerr(3, "destroying client %s\n", clp->relpath);
+	printerr(4, "destroying client %s\n", clp->relpath);
 
 	if (clp->krb5_ev) {
 		event_del(clp->krb5_ev);
@@ -494,7 +494,7 @@ scan_active_thread_list(void)
 			 * upcall_thread_info from the list and free it.
 			 */
 			if (tret == PTHREAD_CANCELED)
-				printerr(3, "watchdog: thread id 0x%lx cancelled successfully\n",
+				printerr(2, "watchdog: thread id 0x%lx cancelled successfully\n",
 						info->tid);
 			saveprev = info->list.tqe_prev;
 			TAILQ_REMOVE(&active_thread_list, info, list);
@@ -598,7 +598,7 @@ gssd_get_clnt(struct topdir *tdi, const char *name)
 		if (!strcmp(clp->name, name))
 			return clp;
 
-	printerr(3, "creating client %s/%s\n", tdi->name, name);
+	printerr(4, "creating client %s/%s\n", tdi->name, name);
 
 	clp = calloc(1, sizeof(struct clnt_info));
 	if (!clp) {
@@ -639,7 +639,7 @@ gssd_scan_clnt(struct clnt_info *clp)
 {
 	int clntfd;
 
-	printerr(3, "scanning client %s\n", clp->relpath);
+	printerr(4, "scanning client %s\n", clp->relpath);
 
 	clntfd = openat(pipefs_fd, clp->relpath, O_RDONLY);
 	if (clntfd < 0) {
@@ -798,7 +798,7 @@ gssd_scan(void)
 {
 	struct dirent *d;
 
-	printerr(3, "doing a full rescan\n");
+	printerr(4, "doing a full rescan\n");
 	rewinddir(pipefs_dir);
 
 	while ((d = readdir(pipefs_dir))) {

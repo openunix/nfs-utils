@@ -166,8 +166,9 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
 	unsigned int buf_size = 0;
 	pthread_t tid = pthread_self();
 
-	printerr(2, "do_downcall(0x%x): lifetime_rec=%u acceptor=%.*s\n",
-		tid, lifetime_rec, acceptor->length, acceptor->value);
+	if (get_verbosity() > 1)
+		printerr(2, "do_downcall(0x%lx): lifetime_rec=%s acceptor=%.*s\n",
+			tid, sec2time(lifetime_rec), acceptor->length, acceptor->value);
 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
 		sizeof(context_token->length) + context_token->length +
@@ -193,7 +194,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
 	return;
 out_err:
 	free(buf);
-	printerr(1, "do_downcall(0x%x): Failed to write downcall!\n", tid);
+	printerr(1, "do_downcall(0x%lx): Failed to write downcall!\n", tid);
 	return;
 }
 
@@ -204,8 +205,9 @@ do_error_downcall(int k5_fd, uid_t uid, int err)
 	char	*p = buf, *end = buf + 1024;
 	unsigned int timeout = 0;
 	int	zero = 0;
+	pthread_t tid = pthread_self();
 
-	printerr(2, "doing error downcall\n");
+	printerr(2, "do_error_downcall(0x%lx): uid %d err %d\n", tid, uid, err);
 
 	if (WRITE_BYTES(&p, end, uid)) goto out_err;
 	if (WRITE_BYTES(&p, end, timeout)) goto out_err;
@@ -328,6 +330,7 @@ create_auth_rpc_client(struct clnt_info *clp,
 	struct timeval	timeout;
 	struct sockaddr		*addr = (struct sockaddr *) &clp->addr;
 	socklen_t		salen;
+	pthread_t tid = pthread_self();
 
 	sec.qop = GSS_C_QOP_DEFAULT;
 	sec.svc = RPCSEC_GSS_SVC_NONE;
@@ -361,8 +364,8 @@ create_auth_rpc_client(struct clnt_info *clp,
 
 	/* create an rpc connection to the nfs server */
 
-	printerr(2, "creating %s client for server %s\n", clp->protocol,
-			clp->servername);
+	printerr(3, "create_auth_rpc_client(0x%lx): creating %s client for server %s\n", 
+		tid, clp->protocol, clp->servername);
 
 	protocol = IPPROTO_TCP;
 	if ((strcmp(clp->protocol, "udp")) == 0)
@@ -405,7 +408,8 @@ create_auth_rpc_client(struct clnt_info *clp,
 	if (!tgtname)
 		tgtname = clp->servicename;
 
-	printerr(2, "creating context with server %s\n", tgtname);
+	printerr(3, "create_auth_rpc_client(0x%lx): creating context with server %s\n", 
+		tid, tgtname);
 	auth = authgss_create_default(rpc_clnt, tgtname, &sec);
 	if (!auth) {
 		/* Our caller should print appropriate message */
@@ -511,9 +515,10 @@ krb5_not_machine_creds(struct clnt_info *clp, uid_t uid, char *tgtname,
 	gss_cred_id_t	gss_cred;
 	char		**dname;
 	int		err, resp = -1;
+	pthread_t tid = pthread_self();
 
-	printerr(2, "krb5_not_machine_creds: uid %d tgtname %s\n", 
-		uid, tgtname);
+	printerr(2, "krb5_not_machine_creds(0x%lx): uid %d tgtname %s\n", 
+		tid, uid, tgtname);
 
 	*chg_err = change_identity(uid);
 	if (*chg_err) {
@@ -559,9 +564,10 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid,
 	char	**ccname;
 	int	nocache = 0;
 	int	success = 0;
+	pthread_t tid = pthread_self();
 
-	printerr(2, "krb5_use_machine_creds: uid %d tgtname %s\n", 
-		uid, tgtname);
+	printerr(2, "krb5_use_machine_creds(0x%lx): uid %d tgtname %s\n", 
+		tid, uid, tgtname);
 
 	do {
 		gssd_refresh_krb5_machine_credential(clp->servername,
@@ -878,6 +884,7 @@ start_upcall_thread(void (*func)(struct clnt_upcall_info *), struct clnt_upcall_
 	pthread_t th;
 	struct upcall_thread_info *tinfo;
 	int ret;
+	pthread_t tid = pthread_self();
 
 	tinfo = alloc_upcall_thread_info();
 	if (!tinfo)
@@ -900,6 +907,9 @@ start_upcall_thread(void (*func)(struct clnt_upcall_info *), struct clnt_upcall_
 		free(tinfo);
 		return ret;
 	}
+	printerr(2, "start_upcall_thread(0x%lx): created thread id 0x%lx\n", 
+		tid, th);
+
 	tinfo->tid = th;
 	pthread_mutex_lock(&active_thread_list_lock);
 	clock_gettime(CLOCK_MONOTONIC, &tinfo->timeout);
@@ -962,7 +972,7 @@ handle_gssd_upcall(struct clnt_info *clp)
 	}
 	lbuf[lbuflen-1] = 0;
 
-	printerr(2, "\n%s(0x%x): '%s' (%s)\n", __func__, tid,
+	printerr(2, "\n%s(0x%lx): '%s' (%s)\n", __func__, tid,
 		 lbuf, clp->relpath);
 
 	for (p = strtok(lbuf, " "); p; p = strtok(NULL, " ")) {
