@@ -46,6 +46,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <unistd.h>
 #include <sqlite3.h>
 #include <linux/limits.h>
@@ -544,7 +545,7 @@ sqlite_remove_unreclaimed(time_t grace_start)
 	int ret;
 	char *err = NULL;
 
-	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
+	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %"PRIu64,
 			grace_start);
 	if (ret < 0) {
 		return ret;
