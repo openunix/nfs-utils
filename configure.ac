@@ -688,9 +688,28 @@ AC_SUBST([ACLOCAL_AMFLAGS], ["-I $ac_macro_dir \$(ACLOCAL_FLAGS)"])
 AC_SUBST([_sysconfdir])
 AC_CONFIG_COMMANDS_PRE([eval eval _sysconfdir=$sysconfdir])
 
+# make _statedir available for substituion in config files
+# 2 "evals" needed late to expand variable names.
+AC_SUBST([_statedir])
+AC_CONFIG_COMMANDS_PRE([eval eval _statedir=$statedir])
+
+if test "$statedir" = "/var/lib/nfs"; then
+	rpc_pipefsmount="var-lib-nfs-rpc_pipefs.mount"
+else
+	rpc_pipefsmount="$(systemd-escape -p "$statedir/rpc_pipefs").mount"
+fi
+AC_SUBST(rpc_pipefsmount)
+
+# make _rpc_pipefsmount available for substituion in config files
+# 2 "evals" needed late to expand variable names.
+AC_SUBST([_rpc_pipefsmount])
+AC_CONFIG_COMMANDS_PRE([eval eval _rpc_pipefsmount=$rpc_pipefsmount])
+
 AC_CONFIG_FILES([
 	Makefile
 	systemd/rpc-gssd.service
+	systemd/rpc_pipefs.target
+	systemd/var-lib-nfs-rpc_pipefs.mount
 	linux-nfs/Makefile
 	support/Makefile
 	support/export/Makefile

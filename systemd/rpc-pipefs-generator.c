@@ -21,7 +21,7 @@
 #include "conffile.h"
 #include "systemd.h"
 
-#define RPC_PIPEFS_DEFAULT "/var/lib/nfs/rpc_pipefs"
+#define RPC_PIPEFS_DEFAULT NFS_STATEDIR "/rpc_pipefs"
 
 static int generate_mount_unit(const char *pipefs_path, const char *pipefs_unit,
 			       const char *dirname)

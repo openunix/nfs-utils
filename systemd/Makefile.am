@@ -12,7 +12,9 @@ unit_files =  \
     rpc-statd-notify.service \
     rpc-statd.service \
     \
-    proc-fs-nfsd.mount \
+    proc-fs-nfsd.mount
+
+rpc_pipefs_mount_file = \
     var-lib-nfs-rpc_pipefs.mount
 
 if CONFIG_NFSV4
@@ -75,4 +77,5 @@ genexec_PROGRAMS = nfs-server-generator rpc-pipefs-generator
 install-data-hook: $(unit_files)
 	mkdir -p $(DESTDIR)/$(unitdir)
 	cp $(unit_files) $(DESTDIR)/$(unitdir)
+	cp $(rpc_pipefs_mount_file) $(DESTDIR)/$(unitdir)/$(rpc_pipefsmount)
 endif
