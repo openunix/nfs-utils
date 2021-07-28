@@ -540,7 +540,7 @@ out_err:
  * remove any client records that were not reclaimed since grace_start.
  */
 int
-sqlite_remove_unreclaimed(time_t grace_start)
+sqlite_remove_unreclaimed(uint64_t grace_start)
 {
 	int ret;
 	char *err = NULL;

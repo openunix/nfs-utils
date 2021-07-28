@@ -508,7 +508,7 @@ cltrack_gracedone(const char *timestr)
 {
 	int ret;
 	char *tail;
-	time_t gracetime;
+	uint64_t gracetime;
 
 
 	ret = sqlite_prepare_dbh(storagedir);
