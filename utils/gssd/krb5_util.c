@@ -673,8 +673,8 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
 	    *c = tolower(*c);
 
 	if (get_verbosity() && strcmp(inhost, outhost))
-		printerr(1, "%s(0x%0lx): inhost '%s' different than outhost'%s'\n", 
-			inhost, outhost);
+		printerr(1, "%s(0x%0lx): inhost '%s' different than outhost '%s'\n", 
+			 __func__, tid, inhost, outhost);
 
 	retval = 0;
 out:
