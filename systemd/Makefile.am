@@ -53,7 +53,7 @@ man5_MANS	= nfs.conf.man
 man7_MANS	= nfs.systemd.man
 EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
 
-generator_dir = /usr/lib/systemd/system-generators
+generator_dir = $(unitdir)/../system-generators
 
 EXTRA_PROGRAMS	= nfs-server-generator rpc-pipefs-generator
 genexecdir = $(generator_dir)
