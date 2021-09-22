@@ -10,6 +10,7 @@
 #include <sys/inotify.h>
 #include <errno.h>
 #include "export.h"
+#include "version.h"
 
 /* search.h declares 'struct entry' and nfs_prot.h
  * does too.  Easiest fix is to trick search.h into
@@ -23,6 +24,8 @@ static int clients_fd = -1;
 
 void v4clients_init(void)
 {
+	if (linux_version_code() < MAKE_VERSION(5, 3, 0))
+		return;
 	if (clients_fd >= 0)
 		return;
 	clients_fd = inotify_init1(IN_NONBLOCK);
