@@ -187,6 +187,12 @@ else
 	enable_libmount=no
 fi
 
+AC_ARG_ENABLE(sbin-override,
+	[AC_HELP_STRING([--disable-sbin-override],
+		[Don't force nfsdcltrack and mount helpers into /sbin: always honour --sbindir])],
+	enable_sbin_override=$enableval,
+	enable_sbin_override=yes)
+	AM_CONDITIONAL(CONFIG_SBIN_OVERRIDE, [test "$enable_sbin_override" = "yes"])
 AC_ARG_ENABLE(junction,
 	[AC_HELP_STRING([--enable-junction],
 			[enable support for NFS junctions @<:@default=no@:>@])],
