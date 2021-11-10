@@ -429,10 +429,6 @@ static int get_socket(struct sockaddr_in *saddr, unsigned int p_prot,
 	if (resvp) {
 		if (bindresvport(so, &laddr) < 0)
 			goto err_bindresvport;
-	} else {
-		cc = bind(so, SAFE_SOCKADDR(&laddr), namelen);
-		if (cc < 0)
-			goto err_bind;
 	}
 	if (type == SOCK_STREAM || (conn && type == SOCK_DGRAM)) {
 		cc = connect_to(so, SAFE_SOCKADDR(saddr), namelen,
