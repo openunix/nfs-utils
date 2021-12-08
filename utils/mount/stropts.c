@@ -357,6 +357,7 @@ static int nfs_insert_sloppy_option(struct mount_options *options)
 
 static int nfs_set_version(struct nfsmount_info *mi)
 {
+
 	if (!nfs_nfs_version(mi->type, mi->options, &mi->version))
 		return 0;
 
@@ -1016,7 +1017,6 @@ static int nfs_try_mount(struct nfsmount_info *mi)
 	}
 
 	switch (mi->version.major) {
-		case 2:
 		case 3:
 			result = nfs_try_mount_v3v2(mi, FALSE);
 			break;
@@ -1246,6 +1246,14 @@ static int nfsmount_start(struct nfsmount_info *mi)
 {
 	if (!nfs_validate_options(mi))
 		return EX_FAIL;
+
+	/* 
+	 * NFS v2 has been deprecated
+	 */
+	if (mi->version.major == 2) {
+		mount_error(mi->spec, mi->node, EOPNOTSUPP);
+		return EX_FAIL;
+	}
 
 	/*
 	 * Avoid retry and negotiation logic when remounting

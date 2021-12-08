@@ -97,7 +97,7 @@ static const char *nfs_transport_opttbl[] = {
 };
 
 static const char *nfs_version_opttbl[] = {
-	"v2",
+	"v2", /* no longer supported */
 	"v3",
 	"v4",
 	"vers",
@@ -1286,7 +1286,7 @@ nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *v
 	else if (found < 0)
 		return 1;
 	else if (found <= 2 ) {
-		/* v2, v3, v4 */
+		/* v3, v4 */
 		version_val = version_key + 1;
 		version->v_mode = V_SPECIFIC;
 	} else if (found > 2 ) {
