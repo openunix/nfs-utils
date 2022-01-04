@@ -460,17 +460,6 @@ err_bindresvport:
 	close(so);
 	return RPC_ANYSOCK;
 
-err_bind:
-	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
-	rpc_createerr.cf_error.re_errno = errno;
-	if (verbose) {
-		nfs_error(_("%s: Unable to bind to %s socket: errno %d (%s)\n"),
-			progname, p_prot == IPPROTO_UDP ? _("UDP") : _("TCP"),
-			errno, strerror(errno));
-	}
-	close(so);
-	return RPC_ANYSOCK;
-
 err_connect:
 	rpc_createerr.cf_stat = RPC_SYSTEMERROR;
 	rpc_createerr.cf_error.re_errno = errno;
