@@ -171,7 +171,6 @@ Recognized values:
 .BR lease-time ,
 .BR udp ,
 .BR tcp ,
-.BR vers2 ,
 .BR vers3 ,
 .BR vers4 ,
 .BR vers4.0 ,

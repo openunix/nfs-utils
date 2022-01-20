@@ -156,8 +156,6 @@ Enable (with "on" or "yes" etc) or disable ("off", "no") UDP support.
 .B TCP
 Enable or disable TCP support.
 .TP
-.B vers2
-.TP
 .B vers3
 .TP
 .B vers4
