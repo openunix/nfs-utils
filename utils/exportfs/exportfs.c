@@ -307,14 +307,12 @@ static int exportfs_generic(char *arg, char *options, int verbose)
 {
 	char *path;
 
-printf("exportfs_generic: arg '%s'\n", arg);
 	if ((path = strchr(arg, ':')) != NULL)
 		*path++ = '\0';
 
 	if (!path || *path != '/')
 		return 1;
 
-printf("exportfs_generic: path '%s'\n", path);
 	exportfs_parsed(arg, path, options, verbose);
 	return 0;
 }
