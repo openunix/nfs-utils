@@ -973,7 +973,9 @@ fall_back:
 	if ((result = nfs_try_mount_v3v2(mi, FALSE)))
 		return result;
 
-	errno = olderrno;
+	if (errno != EBUSY || errno != EACCES)
+		errno = olderrno;
+
 	return result;
 }
 
