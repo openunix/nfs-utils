@@ -4,6 +4,7 @@ import collections
 import errno
 import os
 import pathlib
+import socket
 import sys
 
 with open("/proc/mounts", 'r') as f:
@@ -23,6 +24,11 @@ def read_addr_file(path):
             return f.readline().strip()
     except:
         return "(enoent)"
+
+def write_addr_file(path, newaddr):
+    with open(path, 'w') as f:
+        f.write(newaddr)
+    return read_addr_file(path)
 
 def read_info_file(path):
     res = collections.defaultdict(int)
@@ -75,6 +81,10 @@ class Xprt:
         main = " [main]" if self.info.get("main_xprt") else ""
         return f"{self.name}: {self.type}, {self.dstaddr}{main}"
 
+    def set_dstaddr(self, newaddr):
+        resolved = socket.gethostbyname(newaddr)
+        self.dstaddr = write_addr_file(self.path / "dstaddr", newaddr)
+
     def add_command(subparser):
         parser = subparser.add_parser("xprt", help="Commands for individual xprts")
         parser.set_defaults(func=Xprt.show, xprt=None)
@@ -84,6 +94,15 @@ class Xprt:
         show.add_argument("xprt", metavar="XPRT", nargs='?',
                           help="Name of a specific xprt to show")
         show.set_defaults(func=Xprt.show)
+
+        set = subparser.add_parser("set", help="Change an xprt property")
+        set.add_argument("xprt", metavar="XPRT", nargs=1,
+                         help="Name of a specific xprt to modify")
+        subparser = set.add_subparsers(required=True)
+        dstaddr = subparser.add_parser("dstaddr", help="Change an xprt's dstaddr")
+        dstaddr.add_argument("newaddr", metavar="NEWADDR", nargs=1,
+                             help="The new address for the xprt")
+        dstaddr.set_defaults(func=Xprt.set_property, property="dstaddr")
 
     def get_by_name(name):
         glob = f"**/{name}-*" if name else "**/xprt-*"
@@ -96,6 +115,12 @@ class Xprt:
     def show(args):
         for xprt in Xprt.get_by_name(args.xprt):
             print(xprt)
+
+    def set_property(args):
+        for xprt in Xprt.get_by_name(args.xprt[0]):
+            if args.property == "dstaddr":
+                xprt.set_dstaddr(socket.gethostbyname(args.newaddr[0]))
+        print(xprt)
 
 
 class XprtSwitch:
