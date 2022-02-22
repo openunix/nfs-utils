@@ -99,17 +99,18 @@ class Xprt:
 
 
 class XprtSwitch:
-    def __init__(self, path):
+    def __init__(self, path, sep=":"):
         self.path = path
         self.name = path.stem
         self.info = read_info_file(path / "xprt_switch_info")
         self.xprts = sorted([ Xprt(p) for p in self.path.iterdir() if p.is_dir() ])
+        self.sep = sep
 
     def __lt__(self, rhs):
         return self.name < rhs.name
 
     def __str__(self):
-        switch =  f"{self.name}: " \
+        switch =  f"{self.name}{self.sep} " \
                   f"xprts {self.info['num_xprts']}, " \
                   f"active {self.info['num_active']}, " \
                   f"queue {self.info['queue_len']}"
@@ -137,6 +138,39 @@ class XprtSwitch:
             print(switch)
 
 
+class RpcClient:
+    def __init__(self, path):
+        self.path = path
+        self.name = path.stem
+        self.switch = XprtSwitch(path / (path / "switch").readlink(), sep=",")
+
+    def __lt__(self, rhs):
+        return self.name < rhs.name
+
+    def __str__(self):
+        return f"{self.name}: {self.switch}"
+
+    def add_command(subparser):
+        parser = subparser.add_parser("client", help="Commands for rpc clients")
+        parser.set_defaults(func=RpcClient.show, client=None)
+        subparser = parser.add_subparsers()
+
+        show = subparser.add_parser("show", help="Show rpc clients")
+        show.add_argument("client", metavar="CLIENT", nargs='?',
+                          help="Name of a specific rpc client to show")
+        parser.set_defaults(func=RpcClient.show)
+
+    def get_by_name(name):
+        rpc_clients = sunrpc / "rpc-clients"
+        if name:
+            return [ RpcClient(rpc_clients / name) ]
+        return [ RpcClient(f) for f in sorted(rpc_clients.iterdir()) ]
+
+    def show(args):
+        for client in RpcClient.get_by_name(args.client):
+            print(client)
+
+
 parser = argparse.ArgumentParser()
 
 def show_small_help(args):
@@ -145,6 +179,7 @@ def show_small_help(args):
 parser.set_defaults(func=show_small_help)
 
 subparser = parser.add_subparsers(title="commands")
+RpcClient.add_command(subparser)
 XprtSwitch.add_command(subparser)
 Xprt.add_command(subparser)
 
