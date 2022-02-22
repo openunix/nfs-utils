@@ -474,7 +474,7 @@ main(int argc, char **argv)
 		event_free(svrdirev);
 	event_base_free(evbase);
 
-	return 1;
+	return 0;
 }
 
 static void
