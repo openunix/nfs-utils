@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 import argparse
 import collections
+import errno
+import os
 import pathlib
 import sys
 
@@ -37,13 +39,63 @@ class Xprt:
         self.path = path
         self.name = path.stem.rsplit("-", 1)[0]
         self.type = path.stem.split("-")[2]
+        self.info = read_info_file(path / "xprt_info")
         self.dstaddr = read_addr_file(path / "dstaddr")
+        self.srcaddr = read_addr_file(path / "srcaddr")
+
+        with open(path / "xprt_state") as f:
+            self.state = ','.join(f.readline().split()[1:])
 
     def __lt__(self, rhs):
         return self.name < rhs.name
 
+    def _xprt(self):
+        main = ", main" if self.info.get("main_xprt") else ""
+        return f"{self.name}: {self.type}, {self.dstaddr}, " \
+               f"port {self.info['dst_port']}, state <{self.state}>{main}"
+
+    def _src_reqs(self):
+        return f"	Source: {self.srcaddr}, port {self.info['src_port']}, " \
+               f"Requests: {self.info['num_reqs']}"
+
+    def _cong_slots(self):
+        return f"	Congestion: cur {self.info['cur_cong']}, win {self.info['cong_win']}, " \
+               f"Slots: min {self.info['min_num_slots']}, max {self.info['max_num_slots']}"
+
+    def _queues(self):
+        return f"	Queues: binding {self.info['binding_q_len']}, " \
+               f"sending {self.info['sending_q_len']}, pending {self.info['pending_q_len']}, " \
+               f"backlog {self.info['backlog_q_len']}, tasks {self.info['tasks_queuelen']}"
+
+    def __str__(self):
+        return "\n".join([self._xprt(), self._src_reqs(),
+                          self._cong_slots(), self._queues() ])
+
     def small_str(self):
-        return f"{self.name}: {self.type}, {self.dstaddr}"
+        main = " [main]" if self.info.get("main_xprt") else ""
+        return f"{self.name}: {self.type}, {self.dstaddr}{main}"
+
+    def add_command(subparser):
+        parser = subparser.add_parser("xprt", help="Commands for individual xprts")
+        parser.set_defaults(func=Xprt.show, xprt=None)
+        subparser = parser.add_subparsers()
+
+        show = subparser.add_parser("show", help="Show xprts")
+        show.add_argument("xprt", metavar="XPRT", nargs='?',
+                          help="Name of a specific xprt to show")
+        show.set_defaults(func=Xprt.show)
+
+    def get_by_name(name):
+        glob = f"**/{name}-*" if name else "**/xprt-*"
+        res = [ Xprt(x) for x in (sunrpc / "xprt-switches").glob(glob) ]
+        if name and len(res) == 0:
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                    f"{sunrpc / 'xprt-switches' / glob}")
+        return sorted(res)
+
+    def show(args):
+        for xprt in Xprt.get_by_name(args.xprt):
+            print(xprt)
 
 
 class XprtSwitch:
@@ -94,6 +146,7 @@ parser.set_defaults(func=show_small_help)
 
 subparser = parser.add_subparsers(title="commands")
 XprtSwitch.add_command(subparser)
+Xprt.add_command(subparser)
 
 args = parser.parse_args()
 try:
