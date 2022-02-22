@@ -82,7 +82,6 @@ class Xprt:
         return f"{self.name}: {self.type}, {self.dstaddr}{main}"
 
     def set_dstaddr(self, newaddr):
-        resolved = socket.gethostbyname(newaddr)
         self.dstaddr = write_addr_file(self.path / "dstaddr", newaddr)
 
     def add_command(subparser):
@@ -152,6 +151,15 @@ class XprtSwitch:
                           help="Name of a specific switch to show")
         show.set_defaults(func=XprtSwitch.show)
 
+        set = subparser.add_parser("set", help="Change an xprt switch property")
+        set.add_argument("switch", metavar="SWITCH", nargs=1,
+                         help="Name of a specific xprt switch to modify")
+        subparser = set.add_subparsers(required=True)
+        dstaddr = subparser.add_parser("dstaddr", help="Change an xprt switch's dstaddr")
+        dstaddr.add_argument("newaddr", metavar="NEWADDR", nargs=1,
+                             help="The new address for the xprt switch")
+        dstaddr.set_defaults(func=XprtSwitch.set_property, property="dstaddr")
+
     def get_by_name(name):
         xprt_switches = sunrpc / "xprt-switches"
         if name:
@@ -161,6 +169,13 @@ class XprtSwitch:
     def show(args):
         for switch in XprtSwitch.get_by_name(args.switch):
             print(switch)
+
+    def set_property(args):
+        for switch in XprtSwitch.get_by_name(args.switch[0]):
+            resolved = socket.gethostbyname(args.newaddr[0])
+            for xprt in switch.xprts:
+                xprt.set_dstaddr(resolved)
+        print(switch)
 
 
 class RpcClient:
