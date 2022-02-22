@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+import collections
 import pathlib
 import sys
 
@@ -14,6 +15,76 @@ if not sunrpc.is_dir():
     print("ERROR: sysfs does not have sunrpc directory")
     sys.exit(1)
 
+def read_addr_file(path):
+    try:
+        with open(path, 'r') as f:
+            return f.readline().strip()
+    except:
+        return "(enoent)"
+
+def read_info_file(path):
+    res = collections.defaultdict(int)
+    try:
+        with open(path) as info:
+            lines = [ l.split("=", 1) for l in info if "=" in l ]
+            res.update({ key:int(val.strip()) for (key, val) in lines })
+    finally:
+        return res
+
+
+class Xprt:
+    def __init__(self, path):
+        self.path = path
+        self.name = path.stem.rsplit("-", 1)[0]
+        self.type = path.stem.split("-")[2]
+        self.dstaddr = read_addr_file(path / "dstaddr")
+
+    def __lt__(self, rhs):
+        return self.name < rhs.name
+
+    def small_str(self):
+        return f"{self.name}: {self.type}, {self.dstaddr}"
+
+
+class XprtSwitch:
+    def __init__(self, path):
+        self.path = path
+        self.name = path.stem
+        self.info = read_info_file(path / "xprt_switch_info")
+        self.xprts = sorted([ Xprt(p) for p in self.path.iterdir() if p.is_dir() ])
+
+    def __lt__(self, rhs):
+        return self.name < rhs.name
+
+    def __str__(self):
+        switch =  f"{self.name}: " \
+                  f"xprts {self.info['num_xprts']}, " \
+                  f"active {self.info['num_active']}, " \
+                  f"queue {self.info['queue_len']}"
+        xprts = [ f"	{x.small_str()}" for x in self.xprts ]
+        return "\n".join([ switch ] + xprts)
+
+    def add_command(subparser):
+        parser = subparser.add_parser("switch", help="Commands for xprt switches")
+        parser.set_defaults(func=XprtSwitch.show, switch=None)
+        subparser = parser.add_subparsers()
+
+        show = subparser.add_parser("show", help="Show xprt switches")
+        show.add_argument("switch", metavar="SWITCH", nargs='?',
+                          help="Name of a specific switch to show")
+        show.set_defaults(func=XprtSwitch.show)
+
+    def get_by_name(name):
+        xprt_switches = sunrpc / "xprt-switches"
+        if name:
+            return [ XprtSwitch(xprt_switches / name) ]
+        return [ XprtSwitch(f) for f in sorted(xprt_switches.iterdir()) ]
+
+    def show(args):
+        for switch in XprtSwitch.get_by_name(args.switch):
+            print(switch)
+
+
 parser = argparse.ArgumentParser()
 
 def show_small_help(args):
@@ -21,5 +92,12 @@ def show_small_help(args):
     print("sunrpc dir:", sunrpc)
 parser.set_defaults(func=show_small_help)
 
+subparser = parser.add_subparsers(title="commands")
+XprtSwitch.add_command(subparser)
+
 args = parser.parse_args()
-args.func(args)
+try:
+    args.func(args)
+except Exception as e:
+    print(str(e))
+    sys.exit(1)
