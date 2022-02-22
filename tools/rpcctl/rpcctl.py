@@ -48,9 +48,7 @@ class Xprt:
         self.info = read_info_file(path / "xprt_info")
         self.dstaddr = read_addr_file(path / "dstaddr")
         self.srcaddr = read_addr_file(path / "srcaddr")
-
-        with open(path / "xprt_state") as f:
-            self.state = ','.join(f.readline().split()[1:])
+        self.read_state()
 
     def __lt__(self, rhs):
         return self.name < rhs.name
@@ -74,8 +72,15 @@ class Xprt:
                f"backlog {self.info['backlog_q_len']}, tasks {self.info['tasks_queuelen']}"
 
     def __str__(self):
+        if not self.path.exists():
+            return f"{self.name}: has been removed"
         return "\n".join([self._xprt(), self._src_reqs(),
                           self._cong_slots(), self._queues() ])
+
+    def read_state(self):
+        if self.path.exists():
+            with open(self.path / "xprt_state") as f:
+                self.state = ','.join(f.readline().split()[1:])
 
     def small_str(self):
         main = " [main]" if self.info.get("main_xprt") else ""
@@ -84,10 +89,20 @@ class Xprt:
     def set_dstaddr(self, newaddr):
         self.dstaddr = write_addr_file(self.path / "dstaddr", newaddr)
 
+    def set_state(self, state):
+        with open(self.path / "xprt_state", 'w') as f:
+            f.write(state)
+        self.read_state()
+
     def add_command(subparser):
         parser = subparser.add_parser("xprt", help="Commands for individual xprts")
         parser.set_defaults(func=Xprt.show, xprt=None)
         subparser = parser.add_subparsers()
+
+        remove = subparser.add_parser("remove", help="Remove an xprt")
+        remove.add_argument("xprt", metavar="XPRT", nargs=1,
+                            help="Name of the xprt to remove")
+        remove.set_defaults(func=Xprt.set_property, property="remove")
 
         show = subparser.add_parser("show", help="Show xprts")
         show.add_argument("xprt", metavar="XPRT", nargs='?',
@@ -98,6 +113,10 @@ class Xprt:
         set.add_argument("xprt", metavar="XPRT", nargs=1,
                          help="Name of a specific xprt to modify")
         subparser = set.add_subparsers(required=True)
+        online = subparser.add_parser("online", help="Set an xprt online")
+        online.set_defaults(func=Xprt.set_property, property="online")
+        offline = subparser.add_parser("offline", help="Set an xprt offline")
+        offline.set_defaults(func=Xprt.set_property, property="offline")
         dstaddr = subparser.add_parser("dstaddr", help="Change an xprt's dstaddr")
         dstaddr.add_argument("newaddr", metavar="NEWADDR", nargs=1,
                              help="The new address for the xprt")
@@ -119,6 +138,11 @@ class Xprt:
         for xprt in Xprt.get_by_name(args.xprt[0]):
             if args.property == "dstaddr":
                 xprt.set_dstaddr(socket.gethostbyname(args.newaddr[0]))
+            elif args.property == "remove":
+                xprt.set_state("offline")
+                xprt.set_state("remove")
+            else:
+                args.set_state(args.property)
         print(xprt)
 
 
