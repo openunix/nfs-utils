@@ -28,11 +28,12 @@ static int generate_mount_unit(const char *pipefs_path, const char *pipefs_unit,
 {
 	char	*path;
 	FILE	*f;
+	size_t size = (strlen(dirname) + 1 + strlen(pipefs_unit));
 
-	path = malloc(strlen(dirname) + 1 + strlen(pipefs_unit));
+	path = malloc(size);
 	if (!path)
 		return 1;
-	sprintf(path, "%s/%s", dirname, pipefs_unit);
+	snprintf(path, size, "%s/%s", dirname, pipefs_unit);
 	f = fopen(path, "w");
 	if (!f)
 	{
