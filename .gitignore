@@ -62,6 +62,7 @@ tools/locktest/testlk
 tools/getiversion/getiversion
 tools/nfsconf/nfsconf
 tools/nfsrahead/nfsrahead
+tools/nfsrahead/99-nfs_bdi.rules
 support/export/mount.h
 support/export/mount_clnt.c
 support/export/mount_xdr.c
