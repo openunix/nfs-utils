@@ -127,7 +127,7 @@ static int conf_get_readahead(const char *kind) {
 
 int main(int argc, char **argv)
 {
-	int ret = 0;
+	int ret = 0, retry;
 	struct device_info device;
 	unsigned int readahead = 128, verbose = 0, log_stderr = 0;
 	char opt;
@@ -154,7 +154,11 @@ int main(int argc, char **argv)
 	if ((argc - optind) != 1)
 		xlog_err("expected the device number of a BDI; is udev ok?");
 
-	if ((ret = get_device_info(argv[optind], &device)) != 0) {
+	for (retry = 0; retry <= 10; retry++ )
+		if ((ret = get_device_info(argv[optind], &device)) == 0)
+			break;
+
+	if (ret != 0) {
 		xlog(L_ERROR, "unable to find device %s\n", argv[optind]);
 		goto out;
 	}
