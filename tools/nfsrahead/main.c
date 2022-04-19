@@ -2,13 +2,18 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <unistd.h>
 
 #include <libmount/libmount.h>
 #include <sys/sysmacros.h>
 
+#include "xlog.h"
+
 #ifndef MOUNTINFO_PATH
 #define MOUNTINFO_PATH "/proc/self/mountinfo"
 #endif
+
+#define CONF_NAME "nfsrahead"
 
 /* Device information from the system */
 struct device_info {
@@ -108,24 +113,49 @@ static int get_device_info(const char *device_number, struct device_info *device
 	return ret;
 }
 
+#define L_DEFAULT (L_WARNING | L_ERROR | L_FATAL)
+
 int main(int argc, char **argv)
 {
 	int ret = 0;
 	struct device_info device;
-	unsigned int readahead = 128;
+	unsigned int readahead = 128, verbose = 0, log_stderr = 0;
+	char opt;
 
-	if (argc != 2) {
-		return -EINVAL;
+	while((opt = getopt(argc, argv, "dF")) != -1) {
+		switch (opt) {
+		case 'd':
+			verbose = 1;
+			break;
+		case 'F':
+			log_stderr = 1;
+			break;
+		}
 	}
 
-	if ((ret = get_device_info(argv[1], &device)) != 0) {
+	xlog_stderr(log_stderr);
+	xlog_syslog(~log_stderr);
+	xlog_config(L_DEFAULT | (L_NOTICE & verbose), 1);
+	xlog_open(CONF_NAME);
+
+	// xlog_err causes the system to exit
+	if ((argc - optind) != 1)
+		xlog_err("expected the device number of a BDI; is udev ok?");
+
+	if ((ret = get_device_info(argv[optind], &device)) != 0) {
+		xlog(L_ERROR, "unable to find device %s\n", argv[optind]);
 		goto out;
 	}
 
 	if (strncmp("nfs", device.fstype, 3) != 0) {
+		xlog(L_NOTICE,
+			"not setting readahead for non supported fstype %s on device %s\n",
+			device.fstype, argv[optind]);
 		ret = -EINVAL;
 		goto out;
 	}
+
+	xlog(L_WARNING, "setting %s readahead to %d\n", device.mountpoint, readahead);
 
 	printf("%d\n", readahead);
 
