@@ -61,6 +61,7 @@ utils/statd/statd
 tools/locktest/testlk
 tools/getiversion/getiversion
 tools/nfsconf/nfsconf
+tools/nfsrahead/nfsrahead
 support/export/mount.h
 support/export/mount_clnt.c
 support/export/mount_xdr.c
