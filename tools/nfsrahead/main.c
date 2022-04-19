@@ -8,12 +8,14 @@
 #include <sys/sysmacros.h>
 
 #include "xlog.h"
+#include "conffile.h"
 
 #ifndef MOUNTINFO_PATH
 #define MOUNTINFO_PATH "/proc/self/mountinfo"
 #endif
 
 #define CONF_NAME "nfsrahead"
+#define NFS_DEFAULT_READAHEAD 128
 
 /* Device information from the system */
 struct device_info {
@@ -113,6 +115,14 @@ static int get_device_info(const char *device_number, struct device_info *device
 	return ret;
 }
 
+static int conf_get_readahead(const char *kind) {
+	int readahead = 0;
+
+	if((readahead = conf_get_num(CONF_NAME, kind, -1)) == -1)
+		readahead = conf_get_num(CONF_NAME, "default", NFS_DEFAULT_READAHEAD);
+	
+	return readahead;
+}
 #define L_DEFAULT (L_WARNING | L_ERROR | L_FATAL)
 
 int main(int argc, char **argv)
@@ -132,6 +142,8 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
+
+	conf_init_file(NFS_CONFFILE);
 
 	xlog_stderr(log_stderr);
 	xlog_syslog(~log_stderr);
@@ -154,6 +166,8 @@ int main(int argc, char **argv)
 		ret = -EINVAL;
 		goto out;
 	}
+
+	readahead = conf_get_readahead(device.fstype);
 
 	xlog(L_WARNING, "setting %s readahead to %d\n", device.mountpoint, readahead);
 
