@@ -3,6 +3,9 @@ nfsrahead_SOURCES = main.c
 nfsrahead_LDFLAGS= -lmount
 nfsrahead_LDADD = ../../support/nfs/libnfsconf.la
 
+man5_MANS = nfsrahead.man
+EXTRA_DIST = $(man5_MANS)
+
 udev_rulesdir = /usr/lib/udev/rules.d/
 udev_rules_DATA = 99-nfs.rules
 

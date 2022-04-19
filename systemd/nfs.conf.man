@@ -294,6 +294,17 @@ Only
 .B debug=
 is recognized.
 
+.TP
+.B nfsrahead
+Recognized values:
+.BR nfs ,
+.BR nfsv4 ,
+.BR default .
+
+See
+.BR nfsrahead (5)
+for deatils.
+
 .SH FILES
 .TP 10n
 .I /etc/nfs.conf
