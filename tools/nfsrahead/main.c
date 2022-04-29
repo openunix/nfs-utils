@@ -85,8 +85,10 @@ static int get_mountinfo(const char *device_number, struct device_info *device_i
 
 	mnttbl = mnt_new_table();
 
-	if ((ret = mnt_table_parse_file(mnttbl, mountinfo_path)) < 0)
+	if ((ret = mnt_table_parse_file(mnttbl, mountinfo_path)) < 0) {
+		xlog(D_GENERAL, "Failed to parse %s\n", mountinfo_path);
 		goto out_free_tbl;
+	}
 
 	if ((fs = mnt_table_find_devno(mnttbl, device_info->dev, MNT_ITER_FORWARD)) == NULL) {
 		ret = ENOENT;
@@ -130,19 +132,20 @@ static int conf_get_readahead(const char *kind) {
 	
 	return readahead;
 }
-#define L_DEFAULT (L_WARNING | L_ERROR | L_FATAL)
 
 int main(int argc, char **argv)
 {
 	int ret = 0, retry;
 	struct device_info device;
-	unsigned int readahead = 128, verbose = 0, log_stderr = 0;
+	unsigned int readahead = 128, log_level, log_stderr = 0;
 	char opt;
 
+
+	log_level = D_ALL & ~D_GENERAL;
 	while((opt = getopt(argc, argv, "dF")) != -1) {
 		switch (opt) {
 		case 'd':
-			verbose = 1;
+			log_level = D_ALL;
 			break;
 		case 'F':
 			log_stderr = 1;
@@ -154,7 +157,7 @@ int main(int argc, char **argv)
 
 	xlog_stderr(log_stderr);
 	xlog_syslog(~log_stderr);
-	xlog_config(L_DEFAULT | (L_NOTICE & verbose), 1);
+	xlog_config(log_level, 1);
 	xlog_open(CONF_NAME);
 
 	// xlog_err causes the system to exit
@@ -166,12 +169,12 @@ int main(int argc, char **argv)
 			break;
 
 	if (ret != 0) {
-		xlog(L_ERROR, "unable to find device %s\n", argv[optind]);
+		xlog(D_GENERAL, "unable to find device %s\n", argv[optind]);
 		goto out;
 	}
 
 	if (strncmp("nfs", device.fstype, 3) != 0) {
-		xlog(L_NOTICE,
+		xlog(D_GENERAL,
 			"not setting readahead for non supported fstype %s on device %s\n",
 			device.fstype, argv[optind]);
 		ret = -EINVAL;
@@ -180,7 +183,7 @@ int main(int argc, char **argv)
 
 	readahead = conf_get_readahead(device.fstype);
 
-	xlog(L_WARNING, "setting %s readahead to %d\n", device.mountpoint, readahead);
+	xlog(D_FAC7, "setting %s readahead to %d\n", device.mountpoint, readahead);
 
 	printf("%d\n", readahead);
 
