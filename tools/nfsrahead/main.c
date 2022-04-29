@@ -26,27 +26,31 @@ struct device_info {
 };
 
 /* Convert a string in the format n:m to a device number */
-static dev_t dev_from_arg(const char *device_number)
+static int fill_device_number(struct device_info *info)
 {
-	char *s = strdup(device_number), *p;
+	char *s = strdup(info->device_number), *p;
 	char *maj_s, *min_s;
 	unsigned int maj, min;
-	dev_t dev;
+	int err = -EINVAL;
 
 	maj_s = p = s;
-	for ( ; *p != ':'; p++)
+	for ( ; *p != ':' && *p != '\0'; p++)
 		;
 
+	if (*p == '\0')
+		goto out_free;
+
+	err = 0;
 	*p = '\0';
 	min_s = p + 1;
 
 	maj = strtol(maj_s, NULL, 10);
 	min = strtol(min_s, NULL, 10);
 
-	dev = makedev(maj, min);
-
+	info->dev = makedev(maj, min);
+out_free:
 	free(s);
-	return dev;
+	return err;
 }
 
 #define sfree(ptr) if (ptr) free(ptr)
@@ -55,7 +59,7 @@ static dev_t dev_from_arg(const char *device_number)
 static void init_device_info(struct device_info *di, const char *device_number)
 {
 	di->device_number = strdup(device_number);
-	di->dev = dev_from_arg(device_number);
+	di->dev = 0;
 	di->mountpoint = NULL;
 	di->fstype = NULL;
 }
@@ -76,6 +80,8 @@ static int get_mountinfo(const char *device_number, struct device_info *device_i
 	char *target;
 
 	init_device_info(device_info, device_number);
+	if ((ret = fill_device_number(device_info)) < 0)
+		goto out_free_device_info;
 
 	mnttbl = mnt_new_table();
 
@@ -101,6 +107,7 @@ out_free_fs:
 	mnt_free_fs(fs);
 out_free_tbl:
 	mnt_free_table(mnttbl);
+out_free_device_info:
 	free(device_info->device_number);
 	device_info->device_number = NULL;
 	return ret;
