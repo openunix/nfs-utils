@@ -90,9 +90,17 @@ class Xprt:
         self.dstaddr = write_addr_file(self.path / "dstaddr", newaddr)
 
     def set_state(self, state):
+        if self.info.get("main_xprt"):
+            raise Exception(f"Main xprts cannot be set {state}")
         with open(self.path / "xprt_state", 'w') as f:
             f.write(state)
         self.read_state()
+
+    def remove(self):
+        if self.info.get("main_xprt"):
+            raise Exception("Main xprts cannot be removed")
+        self.set_state("offline")
+        self.set_state("remove")
 
     def add_command(subparser):
         parser = subparser.add_parser("xprt", help="Commands for individual xprts")
@@ -139,8 +147,7 @@ class Xprt:
             if args.property == "dstaddr":
                 xprt.set_dstaddr(socket.gethostbyname(args.newaddr[0]))
             elif args.property == "remove":
-                xprt.set_state("offline")
-                xprt.set_state("remove")
+                xprt.remove()
             else:
                 xprt.set_state(args.property)
         print(xprt)
