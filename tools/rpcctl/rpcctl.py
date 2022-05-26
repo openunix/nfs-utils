@@ -142,7 +142,7 @@ class Xprt:
                 xprt.set_state("offline")
                 xprt.set_state("remove")
             else:
-                args.set_state(args.property)
+                xprt.set_state(args.property)
         print(xprt)
 
 
